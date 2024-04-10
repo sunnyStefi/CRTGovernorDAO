@@ -3,5 +3,5 @@ install:
 
 push:
 	git add .
-	git commit -m "amount ERC1155 must be less or equal to ERC20"
+	git commit -m "readme"
 	git push origin main
