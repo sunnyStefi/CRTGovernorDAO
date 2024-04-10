@@ -3,5 +3,5 @@ install:
 
 push:
 	git add .
-	git commit -m "init"
+	git commit -m "test init"
 	git push origin main

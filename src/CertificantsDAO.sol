@@ -14,7 +14,7 @@ import {
 } from "@openzeppelin/contracts/governance/extensions/GovernorTimelockControl.sol";
 import {CRToken} from "./CRToken.sol";
 
-contract CRTGovernorDAO is
+contract CertificantsDAO is
     Governor,
     GovernorSettings,
     GovernorCountingSimple,
@@ -22,13 +22,20 @@ contract CRTGovernorDAO is
     GovernorVotesQuorumFraction,
     GovernorTimelockControl
 {
-    constructor(IVotes _token, TimelockController _timelock)
+    constructor(
+        IVotes _token,
+        TimelockController _timelock,
+        address crtToken //todo adjust and see if it still works
+    )
         Governor("CRTGovernorDAO")
-        GovernorSettings(7200, /* 1 day */ 50400, /* 1 week */ 0)
+        GovernorSettings(1, /* 1 day */ 50400, /* 1 week */ 0)
         GovernorVotes(_token)
         GovernorVotesQuorumFraction(10)
         GovernorTimelockControl(_timelock)
-    {}
+    {
+        CRToken(crtToken).mint(_msgSender(), 100e18);
+        CRToken(crtToken).delegate(_msgSender()); //giving voting power
+    }
 
     // The following functions are overrides required by Solidity.
 
