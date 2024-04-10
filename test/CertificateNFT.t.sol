@@ -59,7 +59,7 @@ contract CertificateNFTTest is Test {
 
     function test_notCertifiedUserCannotMintNFT() public {
         vm.startPrank(ALICE_ADDRESS_ANVIL);
-        vm.expectRevert(abi.encodeWithSelector(CRToken.CertificantsDAO_OnlyCertificantOwnersCanOwnCRToken.selector));
+        vm.expectRevert(abi.encodeWithSelector(CRToken.CRToken_OnlyCertificantOwnersCanOwnCRToken.selector));
         crtToken.mint(ALICE_ADDRESS_ANVIL, 1);
         vm.stopPrank();
     }
@@ -68,8 +68,18 @@ contract CertificateNFTTest is Test {
         vm.startPrank(ALICE_ADDRESS_ANVIL);
         CertificateNFT(payable(proxy)).createCertificate(ALICE_ADDRESS_ANVIL, CERTIFICATE_ID_1, "0x");
         vm.stopPrank();
-        crtToken.mint(ALICE_ADDRESS_ANVIL, 10);
+        crtToken.mint(ALICE_ADDRESS_ANVIL, 1);
         crtToken.delegate(ALICE_ADDRESS_ANVIL);
-        assertEq(crtToken.balanceOf(ALICE_ADDRESS_ANVIL), 10);
+        assertEq(crtToken.balanceOf(ALICE_ADDRESS_ANVIL), 1);
+    }
+
+    function test_certifiedUserCannotMintTooMuchNFT() public {
+        vm.startPrank(ALICE_ADDRESS_ANVIL);
+        CertificateNFT(payable(proxy)).createCertificate(ALICE_ADDRESS_ANVIL, CERTIFICATE_ID_1, "0x");
+        vm.stopPrank();
+        vm.expectRevert(
+            abi.encodeWithSelector(CRToken.CRToken_AmountOfTokenMintedMustBeLessOrEqualThanCertificatesEarned.selector)
+        );
+        crtToken.mint(ALICE_ADDRESS_ANVIL, 10);
     }
 }

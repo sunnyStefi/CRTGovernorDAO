@@ -29,6 +29,7 @@ contract CertificateNFT is Initializable, ERC1155Upgradeable, AccessControlUpgra
     address private s_defaultAdmin;
 
     mapping(uint256 => CertificateStruct) private s_certificates;
+    mapping(address => uint256) private s_certificatesOwned;
     EnumerableSet.UintSet s_certificatesIds;
     EnumerableSet.AddressSet s_certificatesOwners;
 
@@ -77,6 +78,7 @@ contract CertificateNFT is Initializable, ERC1155Upgradeable, AccessControlUpgra
         _mint(from, id, 1, data);
         s_certificatesIds.add(id);
         s_certificatesOwners.add(from);
+        s_certificatesOwned[from] += 1;
         emit CertificateCreated();
         return id;
     }
@@ -91,6 +93,10 @@ contract CertificateNFT is Initializable, ERC1155Upgradeable, AccessControlUpgra
     function isCertified(address _user) public view returns (bool) {
         return s_certificatesOwners.contains(_user);
     }
+
+    function getCertificatesAmountPerUser(address user) public view returns (uint256) {
+        return s_certificatesOwned[user];
+    }
     /**
      * Overrides
      */
@@ -102,6 +108,7 @@ contract CertificateNFT is Initializable, ERC1155Upgradeable, AccessControlUpgra
     {
         super.safeTransferFrom(from, to, id, value, data);
     }
+    
     // OPENSEA
 
     function uri(uint256 _tokenid) public view override returns (string memory) {
@@ -121,6 +128,7 @@ contract CertificateNFT is Initializable, ERC1155Upgradeable, AccessControlUpgra
     {
         return super.supportsInterface(interfaceId);
     }
+
     // PROXY
 
     function _authorizeUpgrade(address newImplementation) internal override onlyRole(UPGRADER_ROLE) {}

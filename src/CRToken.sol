@@ -10,7 +10,8 @@ import {CertificateNFT} from "./CertificateNFT.sol";
 contract CRToken is ERC20, ERC20Permit, ERC20Votes {
     CertificateNFT certificateNFT;
 
-    error CertificantsDAO_OnlyCertificantOwnersCanOwnCRToken();
+    error CRToken_OnlyCertificantOwnersCanOwnCRToken();
+    error CRToken_AmountOfTokenMintedMustBeLessOrEqualThanCertificatesEarned();
 
     constructor(address _certificateNFT) ERC20("CRToken", "CERT") ERC20Permit("CRToken") {
         certificateNFT = CertificateNFT(_certificateNFT);
@@ -18,7 +19,10 @@ contract CRToken is ERC20, ERC20Permit, ERC20Votes {
 
     function mint(address to, uint256 amount) public {
         if (!certificateNFT.isCertified(to)) {
-            revert CertificantsDAO_OnlyCertificantOwnersCanOwnCRToken();
+            revert CRToken_OnlyCertificantOwnersCanOwnCRToken();
+        }
+        if (amount > certificateNFT.getCertificatesAmountPerUser(to)) {
+            revert CRToken_AmountOfTokenMintedMustBeLessOrEqualThanCertificatesEarned();
         }
         _mint(to, amount);
     }
