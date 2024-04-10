@@ -3,5 +3,5 @@ install:
 
 push:
 	git add .
-	git commit -m "test init"
+	git commit -m "added ERC1155 check before mint"
 	git push origin main

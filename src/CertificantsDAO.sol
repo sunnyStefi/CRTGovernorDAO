@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: MIT
-// Compatible with OpenZeppelin Contracts ^5.0.0
 pragma solidity ^0.8.20;
 
 import {Governor} from "@openzeppelin/contracts/governance/Governor.sol";
@@ -22,22 +21,16 @@ contract CertificantsDAO is
     GovernorVotesQuorumFraction,
     GovernorTimelockControl
 {
-    constructor(
-        IVotes _token,
-        TimelockController _timelock,
-        address crtToken //todo adjust and see if it still works
-    )
-        Governor("CRTGovernorDAO")
+    constructor(CRToken _token, TimelockController _timelock)
+        Governor("CertificantsDAO")
         GovernorSettings(1, /* 1 day */ 50400, /* 1 week */ 0)
         GovernorVotes(_token)
         GovernorVotesQuorumFraction(10)
         GovernorTimelockControl(_timelock)
     {
-        CRToken(crtToken).mint(_msgSender(), 100e18);
-        CRToken(crtToken).delegate(_msgSender()); //giving voting power
+        // _token.mint(_msgSender(), 100e18);
+        // _token.delegate(_msgSender()); //giving voting power
     }
-
-    // The following functions are overrides required by Solidity.
 
     function votingDelay() public view override(Governor, GovernorSettings) returns (uint256) {
         return super.votingDelay();
