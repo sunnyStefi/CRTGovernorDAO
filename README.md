@@ -1,4 +1,4 @@
-## CertificantsDAO
+## Certificate Generator and DAO v0.2 - cantsDAO
 
 1. Controls funds received by CourseFactory students
 2. Can execute a tx only if it's been voted on

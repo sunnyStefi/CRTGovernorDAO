@@ -2,11 +2,11 @@
 pragma solidity ^0.8.19;
 
 import {Test, console} from "forge-std/Test.sol";
-import {CertificantsDAO} from "../src/CertificantsDAO.sol";
-import {CRToken} from "../src/CRToken.sol";
-import {MakeStuff} from "../src/MakeStuff.sol";
-import {TimeLock} from "../src/TimeLock.sol";
-import {CertificateNFT} from "../src/CertificateNFT.sol";
+import {CertificantsDAO} from "../src/DAO/CertificantsDAO.sol";
+import {CRToken} from "../src/DAO/CRToken.sol";
+import {MakeStuff} from "../src/DAO/MakeStuff.sol";
+import {TimeLock} from "../src/DAO/TimeLock.sol";
+import {CertificateNFT} from "../src/CertificateFactory/CertificateNFT.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 contract CertificantsDAOTest is Test {
