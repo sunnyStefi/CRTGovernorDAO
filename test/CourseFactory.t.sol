@@ -28,11 +28,18 @@ contract CourseFactoryTest is Test {
             TEST_URI, placesTotal, TEST_URI_ARRAY, TEST_URI, TEST_URI_ARRAY, TEST_URI_ARRAY
         );
         vm.stopPrank();
-        vm.assertEq(CourseFactory(payable(proxy)).getCreator(0), ALICE_ADDRESS_ANVIL);
+        vm.assertEq(CourseFactory(payable(proxy)).getCreator(1), ALICE_ADDRESS_ANVIL);
     }
 
     function test_createMoreCourses() public {
         vm.startPrank(ALICE_ADDRESS_ANVIL);
+        CourseFactory(payable(proxy)).createCourse(
+            TEST_URI, placesTotal, TEST_URI_ARRAY, TEST_URI, TEST_URI_ARRAY, TEST_URI_ARRAY
+        );
+        CourseFactory(payable(proxy)).createCourse(
+            TEST_URI, placesTotal, TEST_URI_ARRAY, TEST_URI, TEST_URI_ARRAY, TEST_URI_ARRAY
+        );
         vm.stopPrank();
+        vm.assertEq(CourseFactory(payable(proxy)).getIdCounter(), 2);
     }
 }

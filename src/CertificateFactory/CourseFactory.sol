@@ -96,6 +96,7 @@ contract CourseFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
             revert CourseFactory_EachLessonMustHaveOneQuiz();
         }
 
+        (, s_courseIdCounter) = s_courseIdCounter.tryAdd(1); //todo research add and safemath current state
         uint256[] memory lessonsIds = new uint256[](_lessonsUris.length);
         for (uint256 i = 0; i < _lessonsUris.length; i++) {
             lessonsIds[i] = i;
@@ -116,13 +117,14 @@ contract CourseFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
 
         s_idToCourse[s_courseIdCounter] = newCourse;
         emit CourseFactory_CertificateCreated(s_courseIdCounter);
-        s_courseIdCounter.tryAdd(1); //todo research add and safemath current state
-        return s_idToCourse[s_courseIdCounter];
+
+        return newCourse;
     }
 
     /**
      * Getters
      */
+    //course counter starts from 1
     function getIdCounter() public view returns (uint256) {
         return s_courseIdCounter;
     }
