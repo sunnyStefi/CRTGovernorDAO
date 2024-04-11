@@ -3,5 +3,5 @@ install:
 
 push:
 	git add .
-	git commit -m "readme"
-	git push origin main
+	git commit -m "createCourse, tests"
+	git push origin integrateFactoryLogic

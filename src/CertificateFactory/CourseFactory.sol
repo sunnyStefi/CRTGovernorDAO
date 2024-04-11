@@ -9,78 +9,57 @@ import {ERC165Upgradeable} from "@openzeppelin/contracts-upgradeable/utils/intro
 import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 /**
  * @notice This contract govern the creation, transfer and management of certificates.
  */
 contract CourseFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeable {
-    enum Difficulty {
-        BEGINNER,
-        INTERMEDIATE,
-        ADVANCED,
-        PROFESSIONAL
-    }
+    // enum Difficulty {
+    //     BEGINNER,
+    //     INTERMEDIATE,
+    //     ADVANCED,
+    //     PROFESSIONAL
+    // }
 
+    using Math for uint256;
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableSet for EnumerableSet.UintSet;
 
     bytes32 public constant ADMIN = keccak256("ADMIN");
-    bytes32 public constant EVALUATOR = keccak256("EVALUATOR");
-    bytes32 public constant STUDENT = keccak256("STUDENT"); //todo assign
     bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
 
-    event CertificateCreated();
-    event DefaultRolesAssigned();
+    event CourseFactory_CertificateCreated(uint256 indexed id);
+    event CourseFactory_DefaultRolesAssigned();
+
+    error CourseFactory_CourseAlreadyExists();
+    error CourseFactory_EachLessonMustHaveOneQuiz();
 
     address private s_defaultAdmin;
 
+    uint256 s_courseIdCounter;
     mapping(uint256 => CourseStruct) private s_idToCourse;
-    mapping(address => uint256) private s_certificatesOwned;
-    EnumerableSet.UintSet s_certificatesIds;
-    EnumerableSet.AddressSet s_certificatesOwners;
 
     uint256[49] __gap;
 
-    //connect with studentPath later
-    struct TestStruct {
-        Difficulty difficulty;
-        string uri;
-    }
-
-    //connect with studentPath later
-    struct CertificateStruct {
-        string uri;
-    }
-
-    struct SectionStruct {
-        string uri;
-        bool isCompleted;
-        mapping(uint256 => LessonsStruct) lessons;
-    }
-
-    struct LessonsStruct {
-        string uri;
-        bool isCompleted;
-        string quizUri;
-        bool isQuizPassed;
-    }
-
     struct CourseStruct {
-        //1. places
-        uint256 places_total;
-        uint256 places_available;
-        //2. test
-        TestStruct[] tests;
-        //3. certification
-        CertificateStruct certification;
-        //4. sections
-        //4.1 lessons
-        //4.1.1 quiz
-        mapping(uint256 => SectionStruct) sections;
-        //others
+        //0. others
         address creator;
         bool isOpen;
         string uri;
+        //1. places
+        uint256 placesTotal;
+        uint256 placesAvailable;
+        //2. test
+        string[] testsUris;
+        //3. certification
+        string certificationUri;
+        //4. sections -- not consider for now
+        //4.1 lessons
+        //4.1.1 quiz
+        uint256[] lessonsIds;
+        string[] lessonsUris;
+        string[] quizUris;
     }
 
     constructor() {
@@ -92,7 +71,6 @@ contract CourseFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
         __UUPSUpgradeable_init();
 
         _setRoleAdmin(ADMIN, ADMIN);
-        _setRoleAdmin(EVALUATOR, ADMIN);
 
         _grantRole(ADMIN, _msgSender());
         _grantRole(ADMIN, address(this));
@@ -101,23 +79,64 @@ contract CourseFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
         _grantRole(UPGRADER_ROLE, upgrader);
 
         s_defaultAdmin = defaultAdmin;
+        s_courseIdCounter = 0;
 
-        emit DefaultRolesAssigned();
+        emit CourseFactory_DefaultRolesAssigned();
     }
 
-    function createCourse(address from, uint256 id, bytes memory data) public onlyRole(ADMIN) returns (uint256) {
-        s_certificatesIds.add(id);
-        s_certificatesOwners.add(from);
-        s_certificatesOwned[from] += 1;
-        emit CertificateCreated();
-        return id;
+    function createCourse(
+        string memory uri,
+        uint256 _placesTotal,
+        string[] memory _testsUris,
+        string memory _certificationUri,
+        string[] memory _lessonsUris,
+        string[] memory _quizUris
+    ) public onlyRole(ADMIN) returns (CourseStruct memory) {
+        if (_lessonsUris.length != _quizUris.length) {
+            revert CourseFactory_EachLessonMustHaveOneQuiz();
+        }
+
+        uint256[] memory lessonsIds = new uint256[](_lessonsUris.length);
+        for (uint256 i = 0; i < _lessonsUris.length; i++) {
+            lessonsIds[i] = i;
+        }
+
+        CourseStruct memory newCourse = CourseStruct(
+            _msgSender(),
+            true,
+            uri,
+            _placesTotal,
+            _placesTotal,
+            _testsUris,
+            _certificationUri,
+            lessonsIds,
+            _lessonsUris,
+            _quizUris
+        );
+
+        s_idToCourse[s_courseIdCounter] = newCourse;
+        emit CourseFactory_CertificateCreated(s_courseIdCounter);
+        s_courseIdCounter.tryAdd(1); //todo research add and safemath current state
+        return s_idToCourse[s_courseIdCounter];
     }
 
     /**
      * Getters
      */
-    function getCertificateIds() public view returns (uint256[] memory) {
-        return s_certificatesIds.values();
+    function getIdCounter() public view returns (uint256) {
+        return s_courseIdCounter;
+    }
+
+    function getCourse(uint256 id) public view returns (CourseStruct memory) {
+        return s_idToCourse[id];
+    }
+
+    function getCreator(uint256 id) public view returns (address) {
+        return s_idToCourse[id].creator;
+    }
+
+    function isAdmin(address user) public view returns (bool) {
+        return hasRole(ADMIN, user);
     }
     // PROXY
 
