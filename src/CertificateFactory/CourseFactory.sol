@@ -37,6 +37,7 @@ contract CourseFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
     State private s_randomIdsRequest;
     CourseStruct s_createdCourse;
 
+    event CourseFactory_CourseIdReceived(uint256 indexed id);
     event CourseFactory_CertificateCreated(uint256 indexed id);
     event CourseFactory_DefaultRolesAssigned();
 
@@ -117,7 +118,7 @@ contract CourseFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
         string memory _certificationUri,
         string[] memory _lessonsUris,
         string[] memory _quizUris
-    ) public onlyRole(ADMIN) returns (CourseStruct memory) {
+    ) public onlyRole(ADMIN) returns (CourseStruct memory, uint256 requestId) {
         if (_lessonsUris.length != _quizUris.length) {
             revert CourseFactory_EachLessonMustHaveOneQuiz();
         }
@@ -150,16 +151,17 @@ contract CourseFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
         uint256 requestId = s_vrfCoordinator.requestRandomWords(
             s_gasLane, s_subscriptionId, REQUEST_CONFIRMATIONS, s_callbackgaslimit, NUM_WORDS
         );
-        return s_createdCourse;
+        return (s_createdCourse, requestId);
     }
     /**
      * Create Course after receiving random words (VRF callback function)
      *
      */
 
-    function fulfillRandomWords(uint256 requestId, uint256[] memory randomWords) internal override {
+    function fulfillRandomWords(uint256, /*requestId*/ uint256[] memory randomWords) internal override {
         uint256 courseId = randomWords[0];
         s_idToCourse[courseId] = s_createdCourse;
+        emit CourseFactory_CourseIdReceived(courseId);
 
         //reset fields
         string[] memory emptyArrayStr = new string[](0);

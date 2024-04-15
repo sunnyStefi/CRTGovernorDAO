@@ -21,12 +21,9 @@ contract CourseFactoryTest is Test {
         vm.startPrank(ALICE_ADDRESS_ANVIL);
         vrfCoordinatorV2Mock = new VRFCoordinatorV2Mock(baseFee, gasPriceLink);
         courseFactory = new CourseFactory(address(vrfCoordinatorV2Mock));
+        vrfCoordinatorV2Mock.addConsumer(address(courseFactory));
         bytes memory initializerData =
-            abi.encodeWithSelector(CourseFactory.initialize.selector, ALICE_ADDRESS_ANVIL, ALICE_ADDRESS_ANVIL, address(vrfCoordinatorV2Mock), );
-
-        bytes32 gasLane,
-        uint64 subscriptionId,
-        uint32 callbackgaslimit
+            abi.encodeWithSelector(CourseFactory.initialize.selector, ALICE_ADDRESS_ANVIL, ALICE_ADDRESS_ANVIL, address(vrfCoordinatorV2Mock), "0x",0,1 ether);
         proxy = new ERC1967Proxy(address(courseFactory), initializerData);
         vm.stopPrank();
     }
@@ -70,7 +67,7 @@ contract CourseFactoryTest is Test {
 
         //pretend to be chainlink vrf
         VRFCoordinatorV2Mock(coordinator).fulfillRandomWords(uint256(requestId), address(courseFactory));
-
+        console.log()
 
         vm.stopPrank();
     }
