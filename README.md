@@ -6,5 +6,10 @@
 4. The ratio between CRTokens (ERC20) minted and Certificates earned (ERC1155) must always be 1:1
 
 ## Flow
+<img src="img/flow_general.png" alt="DAO" width="600"/>
+<img src="img/course_factory.png" alt="Factory" width="600"/>
+<img src="img/student_path.png" alt="StudentPath" width="600"/>
 
-<img src="img/flow_general.png" alt="drawing" width="600"/>
+## Tools
+- Openzeppelin: ERC1967Proxy, AccessControl
+- Chainlink: VRF (for CourseId)

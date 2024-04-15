@@ -10,30 +10,39 @@ import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {VRFCoordinatorV2Interface} from "@chainlink/vrf/interfaces/VRFCoordinatorV2Interface.sol";
+import {VRFConsumerBaseV2} from "@chainlink/vrf/VRFConsumerBaseV2.sol";
 
 /**
  * @notice This contract govern the creation, transfer and management of certificates.
  */
-contract CourseFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeable {
-    // enum Difficulty {
-    //     BEGINNER,
-    //     INTERMEDIATE,
-    //     ADVANCED,
-    //     PROFESSIONAL
-    // }
+contract CourseFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeable, VRFConsumerBaseV2 {
+    enum State {
+        OPEN,
+        PENDING
+    }
 
     using Math for uint256;
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableSet for EnumerableSet.UintSet;
 
+    uint16 private REQUEST_CONFIRMATIONS = 3;
+    uint32 private NUM_WORDS = 1;
     bytes32 public constant ADMIN = keccak256("ADMIN");
     bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
+    VRFCoordinatorV2Interface private s_vrfCoordinator;
+    bytes32 private s_gasLane;
+    uint64 private s_subscriptionId;
+    uint32 private s_callbackgaslimit;
+    State private s_randomIdsRequest;
+    CourseStruct s_createdCourse;
 
     event CourseFactory_CertificateCreated(uint256 indexed id);
     event CourseFactory_DefaultRolesAssigned();
 
     error CourseFactory_CourseAlreadyExists();
     error CourseFactory_EachLessonMustHaveOneQuiz();
+    error RequestNotOpen();
 
     address private s_defaultAdmin;
 
@@ -62,11 +71,19 @@ contract CourseFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
         string[] quizUris;
     }
 
-    constructor() {
+    constructor(address vrfCoordinator) VRFConsumerBaseV2(vrfCoordinator) {
+        //to check
         _disableInitializers();
     }
 
-    function initialize(address defaultAdmin, address upgrader) public initializer {
+    function initialize(
+        address defaultAdmin,
+        address upgrader,
+        address vrfCoordinator,
+        bytes32 gasLane,
+        uint64 subscriptionId,
+        uint32 callbackgaslimit
+    ) public initializer {
         __AccessControl_init();
         __UUPSUpgradeable_init();
 
@@ -81,9 +98,18 @@ contract CourseFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
         s_defaultAdmin = defaultAdmin;
         s_courseIdCounter = 0;
 
+        //VRF params - chain dependent addresses
+        s_vrfCoordinator = VRFCoordinatorV2Interface(vrfCoordinator);
+        s_gasLane = gasLane;
+        s_subscriptionId = subscriptionId;
+        s_callbackgaslimit = callbackgaslimit;
+        s_randomIdsRequest = State.OPEN;
         emit CourseFactory_DefaultRolesAssigned();
     }
 
+    /* 
+     *  Step 1: create course and request random id
+     */
     function createCourse(
         string memory uri,
         uint256 _placesTotal,
@@ -95,14 +121,18 @@ contract CourseFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
         if (_lessonsUris.length != _quizUris.length) {
             revert CourseFactory_EachLessonMustHaveOneQuiz();
         }
-
-        (, s_courseIdCounter) = s_courseIdCounter.tryAdd(1); //todo research add and safemath current state
+        if (s_randomIdsRequest != State.OPEN) {
+            revert RequestNotOpen();
+        }
+        s_randomIdsRequest = State.PENDING;
+        (, s_courseIdCounter) = s_courseIdCounter.tryAdd(1);
         uint256[] memory lessonsIds = new uint256[](_lessonsUris.length);
+
         for (uint256 i = 0; i < _lessonsUris.length; i++) {
             lessonsIds[i] = i;
         }
 
-        CourseStruct memory newCourse = CourseStruct(
+        s_createdCourse = CourseStruct(
             _msgSender(),
             true,
             uri,
@@ -115,10 +145,34 @@ contract CourseFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
             _quizUris
         );
 
-        s_idToCourse[s_courseIdCounter] = newCourse;
         emit CourseFactory_CertificateCreated(s_courseIdCounter);
 
-        return newCourse;
+        uint256 requestId = s_vrfCoordinator.requestRandomWords(
+            s_gasLane, s_subscriptionId, REQUEST_CONFIRMATIONS, s_callbackgaslimit, NUM_WORDS
+        );
+        return s_createdCourse;
+    }
+    /**
+     * Create Course after receiving random words (VRF callback function)
+     *
+     */
+
+    function fulfillRandomWords(uint256 requestId, uint256[] memory randomWords) internal override {
+        uint256 courseId = randomWords[0];
+        s_idToCourse[courseId] = s_createdCourse;
+
+        //reset fields
+        string[] memory emptyArrayStr = new string[](0);
+        uint256[] memory emptyArrayUint = new uint256[](0);
+        s_createdCourse =
+            CourseStruct(address(0), false, "", 0, 0, emptyArrayStr, "", emptyArrayUint, emptyArrayStr, emptyArrayStr);
+        s_randomIdsRequest = State.OPEN;
+    }
+
+    function removeCourse(uint256 courseId) public onlyRole(ADMIN) returns (bool) {
+        s_idToCourse[courseId].creator = address(0);
+        s_idToCourse[courseId].isOpen = false;
+        //..todo
     }
 
     /**
@@ -140,6 +194,13 @@ contract CourseFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
     function isAdmin(address user) public view returns (bool) {
         return hasRole(ADMIN, user);
     }
+
+    /**
+     * Setters
+     */
+    function closeCourse() public {}
+
+    function openCourse() public {}
     // PROXY
 
     function _authorizeUpgrade(address newImplementation) internal override onlyRole(UPGRADER_ROLE) {}
