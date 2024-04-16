@@ -1,7 +1,9 @@
 install:
-	forge install openzeppelin/openzeppelin-contracts --no-commit
+	forge install openzeppelin/openzeppelin-contracts --no-commit &&
+	forge install smartcontractkit/chainlink --no-commit  &&
+	forge install transmissions11/solmate@v6 --no-commit
 
 push:
 	git add .
-	git commit -m "readme"
-	git push origin main
+	git commit -m "chainlink vrf"
+	git push origin integrateFactoryLogic
