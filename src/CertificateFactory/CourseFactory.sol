@@ -27,25 +27,27 @@ contract CourseFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
     using EnumerableSet for EnumerableSet.UintSet;
 
     uint16 private REQUEST_CONFIRMATIONS = 3;
-    uint32 private NUM_WORDS = 1;
+    uint32 private NUM_WORDS; //do not assign variable here
     bytes32 public constant ADMIN = keccak256("ADMIN");
     bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
     VRFCoordinatorV2Interface private s_vrfCoordinator;
     bytes32 private s_gasLane;
     uint64 private s_subscriptionId;
     uint32 private s_callbackgaslimit;
-    State private s_randomIdsRequest;
+    State private s_currentRequestState;
     CourseStruct s_createdCourse;
 
     event CourseFactory_CourseIdReceived(uint256 indexed id);
     event CourseFactory_CertificateCreatedAndRequestSent(uint256 indexed id);
     event CourseFactory_DefaultRolesAssigned();
+    event NumberOfLessons(uint256 indexed num);
 
+    error CourseFactory_IncorrectState();
     error CourseFactory_CourseAlreadyExists();
     error CourseFactory_EachLessonMustHaveOneQuiz();
-    error RequestNotOpen();
 
     address private s_defaultAdmin;
+    uint256 s_lastRandomNumber;
 
     uint256 s_courseIdCounter;
     mapping(uint256 => CourseStruct) private s_idToCourse;
@@ -67,7 +69,7 @@ contract CourseFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
         //4. sections -- not consider for now
         //4.1 lessons
         //4.1.1 quiz
-        uint256[] lessonsIds;
+        string[] lessonsIds;
         string[] lessonsUris;
         string[] quizUris;
     }
@@ -98,13 +100,14 @@ contract CourseFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
 
         s_defaultAdmin = defaultAdmin;
         s_courseIdCounter = 0;
+        NUM_WORDS = 1;
 
         //VRF params - chain dependent addresses
         s_vrfCoordinator = VRFCoordinatorV2Interface(vrfCoordinator);
         s_gasLane = gasLane;
         s_subscriptionId = subscriptionId;
         s_callbackgaslimit = callbackgaslimit;
-        s_randomIdsRequest = State.OPEN;
+        s_currentRequestState = State.OPEN;
         emit CourseFactory_DefaultRolesAssigned();
     }
 
@@ -122,17 +125,12 @@ contract CourseFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
         if (_lessonsUris.length != _quizUris.length) {
             revert CourseFactory_EachLessonMustHaveOneQuiz();
         }
-        if (s_randomIdsRequest != State.OPEN) {
-            revert RequestNotOpen();
+        if (s_currentRequestState != State.OPEN) {
+            revert CourseFactory_IncorrectState();
         }
-        s_randomIdsRequest = State.PENDING;
+        s_currentRequestState = State.PENDING;
         (, s_courseIdCounter) = s_courseIdCounter.tryAdd(1);
-        uint256[] memory lessonsIds = new uint256[](_lessonsUris.length);
-
-        for (uint256 i = 0; i < _lessonsUris.length; i++) {
-            lessonsIds[i] = i;
-        }
-
+        string[] memory emptyArray = new string[](0);
         s_createdCourse = CourseStruct(
             _msgSender(),
             true,
@@ -141,7 +139,7 @@ contract CourseFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
             _placesTotal,
             _testsUris,
             _certificationUri,
-            lessonsIds,
+            emptyArray,
             _lessonsUris,
             _quizUris
         );
@@ -155,21 +153,34 @@ contract CourseFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
         return (s_createdCourse, requestId);
     }
     /**
-     * Create Course after receiving random words (VRF callback function)
-     *
+     * VRF Callback
+     * - receiving random words
+     * - use it as index for mapping courses and lessons
      */
 
     function fulfillRandomWords(uint256, /*requestId*/ uint256[] memory randomWords) internal override {
-        uint256 courseId = randomWords[0];
-        s_idToCourse[courseId] = s_createdCourse;
+        if (s_currentRequestState != State.PENDING) {
+            revert CourseFactory_IncorrectState();
+        }
+        uint256 courseId = randomWords[0] % type(uint256).max;
+        s_lastRandomNumber = courseId;
         emit CourseFactory_CourseIdReceived(courseId);
 
+        //set lessons unique ids COURSE-ID-RANDOM_LESSON-NUMBER
+        uint256 numberOfLessons = getNumberOfLessons(s_createdCourse);
+        string[] memory lessonsIds = new string[](numberOfLessons);
+        for (uint256 i = 0; i < numberOfLessons; i++) {
+            lessonsIds[i] = string(abi.encodePacked(Strings.toString(courseId), "_", Strings.toString(i)));
+        }
+        s_createdCourse.lessonsIds = lessonsIds;
+
+        s_idToCourse[courseId] = s_createdCourse;
         //reset fields
         string[] memory emptyArrayStr = new string[](0);
-        uint256[] memory emptyArrayUint = new uint256[](0);
         s_createdCourse =
-            CourseStruct(address(0), false, "", 0, 0, emptyArrayStr, "", emptyArrayUint, emptyArrayStr, emptyArrayStr);
-        s_randomIdsRequest = State.OPEN;
+            CourseStruct(address(0), false, "", 0, 0, emptyArrayStr, "", emptyArrayStr, emptyArrayStr, emptyArrayStr);
+
+        s_currentRequestState = State.OPEN;
     }
 
     function removeCourse(uint256 courseId) public onlyRole(ADMIN) returns (bool) {
@@ -192,6 +203,22 @@ contract CourseFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
 
     function getCreator(uint256 id) public view returns (address) {
         return s_idToCourse[id].creator;
+    }
+
+    function getNumberOfLessons(CourseStruct memory course) public pure returns (uint256) {
+        return course.lessonsUris.length;
+    }
+
+    function getLessonId(uint256 courseId, uint256 lessonIndex) public view returns (string memory) {
+        return s_idToCourse[courseId].lessonsIds[lessonIndex];
+    }
+
+    function getNumberOfLessons(uint256 courseId) public view returns (uint256) {
+        return s_idToCourse[courseId].lessonsIds.length;
+    }
+
+    function getLastRandomNumber() public view returns (uint256) {
+        return s_lastRandomNumber;
     }
 
     function isAdmin(address user) public view returns (bool) {
