@@ -38,7 +38,7 @@ contract CourseFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
     CourseStruct s_createdCourse;
 
     event CourseFactory_CourseIdReceived(uint256 indexed id);
-    event CourseFactory_CertificateCreated(uint256 indexed id);
+    event CourseFactory_CertificateCreatedAndRequestSent(uint256 indexed id);
     event CourseFactory_DefaultRolesAssigned();
 
     error CourseFactory_CourseAlreadyExists();
@@ -146,11 +146,12 @@ contract CourseFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
             _quizUris
         );
 
-        emit CourseFactory_CertificateCreated(s_courseIdCounter);
-
         uint256 requestId = s_vrfCoordinator.requestRandomWords(
             s_gasLane, s_subscriptionId, REQUEST_CONFIRMATIONS, s_callbackgaslimit, NUM_WORDS
         );
+
+        emit CourseFactory_CertificateCreatedAndRequestSent(requestId);
+
         return (s_createdCourse, requestId);
     }
     /**

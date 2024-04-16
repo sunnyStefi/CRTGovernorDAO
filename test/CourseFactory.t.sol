@@ -63,30 +63,28 @@ contract CourseFactoryTest is Test {
     //     vm.assertEq(CourseFactory(payable(proxy)).getIdCounter(), 2);
     // }
 
-    /**
-     * Enter the course
-     * time up
-     * Perform upkeep
-     * We pretend to be chainlink VRF
-     */
-    function test_sendRandomWordsRequest() public {
+    function test_receiveRandomWord() public {
         vm.startPrank(ALICE_ADDRESS_ANVIL);
-        vm.recordLogs();
         CourseFactory.CourseStruct memory createdCourse;
         uint256 requestIdResult;
+        vm.recordLogs();
         (createdCourse, requestIdResult) = CourseFactory(payable(proxy)).createCourse(
             TEST_URI, placesTotal, TEST_URI_ARRAY, TEST_URI, TEST_URI_ARRAY, TEST_URI_ARRAY
         ); //emit requestId
         Vm.Log[] memory entries = vm.getRecordedLogs();
-        bytes32 requestId = entries[1].topics[1];
+        assertEq(entries[1].topics.length, 2);
+        assertEq(entries[1].topics[0], keccak256("CourseFactory_CertificateCreatedAndRequestSent(uint256)"));
+        console.log(uint256(entries[1].topics[1]));
 
-        //pretend to be chainlink vrf
+        //Pretending to be chainlink VRF
+        vm.recordLogs();
         VRFCoordinatorV2Mock(address(vrfCoordinatorV2Mock)).fulfillRandomWords(
-            uint256(requestIdResult), address(courseFactory)
+            uint256(entries[1].topics[1]), address(proxy)
         );
-        // console.log(uint256(requestId));
-        // console.log(uint256(requestIdResult));
-
+        entries = vm.getRecordedLogs();
+        assertEq(entries[0].topics.length, 2);
+        assertEq(entries[0].topics[0], keccak256("RandomWordsFulfilled(uint256,uint256,uint96,bool)"));
+        console.log(uint256(entries[0].topics[1]));
         vm.stopPrank();
     }
 }
