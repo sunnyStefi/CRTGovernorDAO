@@ -24,7 +24,7 @@ contract CreateCourse is Script {
     uint96 gasPriceLink = 1e9; //1gwei LINK
     CourseFactory.CourseStruct createdCourse;
 
-    function run() external {
+    function run() external returns (address, uint256) {
         vrfCoordinatorV2Mock = new VRFCoordinatorV2Mock(baseFee, gasPriceLink);
         courseFactory = new CourseFactory(address(vrfCoordinatorV2Mock));
         uint64 subscriptionId = vrfCoordinatorV2Mock.createSubscription();
@@ -45,6 +45,9 @@ contract CreateCourse is Script {
         (createdCourse, requestIdResult) = CourseFactory(payable(proxy)).createCourse(
             TEST_URI, placesTotal, TEST_URI_ARRAY, TEST_URI, TEST_LESSON_URI_ARRAY, TEST_LESSON_URI_ARRAY
         );
+        vm.recordLogs();
         vrfCoordinatorV2Mock.fulfillRandomWords(uint256(requestIdResult), address(proxy));
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+        return (address(proxy), uint256(entries[0].topics[1]));
     }
 }

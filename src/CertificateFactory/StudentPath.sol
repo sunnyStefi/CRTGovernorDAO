@@ -11,6 +11,7 @@ import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {EnumerableMap} from "@openzeppelin/contracts/utils/structs/EnumerableMap.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {CourseFactory} from "./CourseFactory.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 /**
  * @notice This contract govern the creation, transfer and management of certificates.
@@ -42,7 +43,7 @@ contract StudentPath is Initializable, AccessControlUpgradeable, UUPSUpgradeable
 
     bytes32 public constant ADMIN = keccak256("ADMIN");
     bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
-    CourseFactory s_courseFactory;
+    ERC1967Proxy s_courseFactoryProxy;
     uint256[49] __gap;
 
     constructor() {
@@ -63,11 +64,11 @@ contract StudentPath is Initializable, AccessControlUpgradeable, UUPSUpgradeable
 
         s_defaultAdmin = defaultAdmin;
         s_studentPathCounter = 0;
-        s_courseFactory = CourseFactory(courseFactory);
+        s_courseFactoryProxy = ERC1967Proxy(payable(courseFactory));
     }
 
-    function addCourseAndLessonsToPath(uint256 courseId, address student) private onlyRole(ADMIN) {
-        string[] memory courseLessons = s_courseFactory.getAllLessonIds(courseId);
+    function addCourseAndLessonsToPath(uint256 courseId, address student) public onlyRole(ADMIN) {
+        string[] memory courseLessons = CourseFactory(payable(s_courseFactoryProxy)).getAllLessonIds(courseId);
         uint256 allLessonsAmount = courseLessons.length;
         s_studentCoursesPath[student][courseId].courseState = State.SUBSCRIBED;
         s_studentCoursesPath[student][courseId].lessonsCompleted = 0;
@@ -109,7 +110,6 @@ contract StudentPath is Initializable, AccessControlUpgradeable, UUPSUpgradeable
             s_studentCoursesPath[student][courseId].courseState = State.ON_HOLD;
         }
 
-        
         if (
             s_studentCoursesPath[student][courseId].lessonsSubscribed
                 == s_studentCoursesPath[student][courseId].lessonsCompleted
