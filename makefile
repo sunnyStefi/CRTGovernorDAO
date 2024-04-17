@@ -5,5 +5,5 @@ install:
 
 push:
 	git add .
-	git commit -m "init student path "
+	git commit -m "add create course interaction"
 	git push origin addStudentpath
