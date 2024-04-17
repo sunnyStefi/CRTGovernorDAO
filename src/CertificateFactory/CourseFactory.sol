@@ -221,6 +221,10 @@ contract CourseFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
         return s_lastRandomNumber;
     }
 
+    function getAllLessonIds(uint256 courseId) public view returns (string[] memory) {
+        return s_idToCourse[courseId].lessonsIds;
+    }
+
     function isAdmin(address user) public view returns (bool) {
         return hasRole(ADMIN, user);
     }

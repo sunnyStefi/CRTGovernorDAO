@@ -5,5 +5,5 @@ install:
 
 push:
 	git add .
-	git commit -m "chainlink vrf"
-	git push origin integrateFactoryLogic
+	git commit -m "init student path "
+	git push origin addStudentpath

@@ -1,159 +1,124 @@
-// //SPDX-License-Identifier: Unlicense
-// pragma solidity ^0.8.20;
-// //named-imports
+//SPDX-License-Identifier: Unlicense
+pragma solidity ^0.8.20;
+//named-imports
 
-// import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-// import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-// import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-// import {ERC165Upgradeable} from "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165Upgradeable.sol";
-// import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
-// import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
-// import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-// import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {ERC165Upgradeable} from "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165Upgradeable.sol";
+import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
+import {EnumerableMap} from "@openzeppelin/contracts/utils/structs/EnumerableMap.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {CourseFactory} from "./CourseFactory.sol";
 
-// /**
-//  * @notice This contract govern the creation, transfer and management of certificates.
-//  */
-// contract StudentPath is Initializable, AccessControlUpgradeable, UUPSUpgradeable {
-//     // enum Difficulty {
-//     //     BEGINNER,
-//     //     INTERMEDIATE,
-//     //     ADVANCED,
-//     //     PROFESSIONAL
-//     // }
+/**
+ * @notice This contract govern the creation, transfer and management of certificates.
+ */
+contract StudentPath is Initializable, AccessControlUpgradeable, UUPSUpgradeable {
+    enum State {
+        SUBSCRIBED,
+        ON_HOLD,
+        COMPLETED
+    }
 
-//     using Math for uint256;
-//     using EnumerableSet for EnumerableSet.AddressSet;
-//     using EnumerableSet for EnumerableSet.UintSet;
+    enum ExamState {
+        FAILED,
+        SUCCEEDED
+    }
 
-//     bytes32 public constant ADMIN = keccak256("ADMIN");
-//     bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
+    struct CourseState {
+        State courseState;
+        uint256 lessonsCompleted;
+        uint256 lessonsSubscribed;
+    }
 
-//     event CourseFactory_CertificateCreated(uint256 indexed id);
-//     event CourseFactory_DefaultRolesAssigned();
+    address private s_defaultAdmin;
+    uint256 private s_studentPathCounter;
 
-//     error CourseFactory_CourseAlreadyExists();
-//     error CourseFactory_EachLessonMustHaveOneQuiz();
+    mapping(address => uint256) private s_studentToLessonSubscribed; //todo all
+    mapping(address => mapping(string => State)) private s_studentLessonsPath;
+    mapping(address => mapping(uint256 => CourseState)) private s_studentCoursesPath;
 
-//     address private s_defaultAdmin;
+    bytes32 public constant ADMIN = keccak256("ADMIN");
+    bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
+    CourseFactory s_courseFactory;
+    uint256[49] __gap;
 
-//     uint256 s_courseIdCounter;
-//     mapping(address => StudentPathStruct) private s_studentToPath;
+    constructor() {
+        _disableInitializers();
+    }
 
-//     uint256[49] __gap;
+    function initialize(address defaultAdmin, address upgrader, address courseFactory) public initializer {
+        __AccessControl_init();
+        __UUPSUpgradeable_init();
 
-//     struct StudentPathStruct {
-//         //0. others
-//         address creator;
-//         bool isOpen;
-//         string uri;
-//         //1. places
-//         uint256 placesTotal;
-//         uint256 placesAvailable;
-//         //2. test
-//         string[] testsUris;
-//         //3. certification
-//         string certificationUri;
-//         //4. sections -- not consider for now
-//         //4.1 lessons
-//         //4.1.1 quiz
-//         uint256[] lessonsIds;
-//         string[] lessonsUris;
-//         string[] quizUris;
-//     }
+        _setRoleAdmin(ADMIN, ADMIN);
 
-//     constructor() {
-//         _disableInitializers();
-//     }
+        _grantRole(ADMIN, _msgSender());
+        _grantRole(ADMIN, address(this));
+        _grantRole(ADMIN, defaultAdmin);
 
-//     function initialize(address defaultAdmin, address upgrader) public initializer {
-//         __AccessControl_init();
-//         __UUPSUpgradeable_init();
+        _grantRole(UPGRADER_ROLE, upgrader);
 
-//         _setRoleAdmin(ADMIN, ADMIN);
+        s_defaultAdmin = defaultAdmin;
+        s_studentPathCounter = 0;
+        s_courseFactory = CourseFactory(courseFactory);
+    }
 
-//         _grantRole(ADMIN, _msgSender());
-//         _grantRole(ADMIN, address(this));
-//         _grantRole(ADMIN, defaultAdmin);
+    function addCourseAndLessonsToPath(uint256 courseId, address student) private onlyRole(ADMIN) {
+        string[] memory courseLessons = s_courseFactory.getAllLessonIds(courseId);
+        uint256 allLessonsAmount = courseLessons.length;
+        s_studentCoursesPath[student][courseId].courseState = State.SUBSCRIBED;
+        s_studentCoursesPath[student][courseId].lessonsCompleted = 0;
+        s_studentCoursesPath[student][courseId].lessonsSubscribed = allLessonsAmount;
 
-//         _grantRole(UPGRADER_ROLE, upgrader);
+        for (uint256 i = 0; i < allLessonsAmount; i++) {
+            s_studentLessonsPath[student][courseLessons[i]] = State.SUBSCRIBED;
+        }
+    }
 
-//         s_defaultAdmin = defaultAdmin;
-//         s_courseIdCounter = 0;
+    function submitCourseTestResult(address student, uint256 courseId, ExamState result) public onlyRole(ADMIN) {}
 
-//         emit CourseFactory_DefaultRolesAssigned();
-//     }
+    function submitLessonQuizResult(address student, uint256 courseId, string memory lessonId, ExamState result)
+        public
+        onlyRole(ADMIN)
+    {}
 
-//     function createCourse(
-//         string memory uri,
-//         uint256 _placesTotal,
-//         string[] memory _testsUris,
-//         string memory _certificationUri,
-//         string[] memory _lessonsUris,
-//         string[] memory _quizUris
-//     ) public onlyRole(ADMIN) returns (CourseStruct memory) {
-//         if (_lessonsUris.length != _quizUris.length) {
-//             revert CourseFactory_EachLessonMustHaveOneQuiz();
-//         }
+    /**
+     * Getters
+     */
 
-//         (, s_courseIdCounter) = s_courseIdCounter.tryAdd(1); //todo research add and safemath current state
-//         uint256[] memory lessonsIds = new uint256[](_lessonsUris.length);
-//         for (uint256 i = 0; i < _lessonsUris.length; i++) {
-//             lessonsIds[i] = i;
-//         }
+    /**
+     * Setters
+     */
+    function setLessonState(address student, uint256 courseId, string memory lessonId, State state)
+        public
+        onlyRole(ADMIN)
+    {
+        s_studentLessonsPath[student][lessonId] = state;
 
-//         CourseStruct memory newCourse = CourseStruct(
-//             _msgSender(),
-//             true,
-//             uri,
-//             _placesTotal,
-//             _placesTotal,
-//             _testsUris,
-//             _certificationUri,
-//             lessonsIds,
-//             _lessonsUris,
-//             _quizUris
-//         );
+        //Set course states
+        if (state == State.COMPLETED) {
+            s_studentCoursesPath[student][courseId].lessonsCompleted += 1;
+        }
+        if (state == State.SUBSCRIBED) {
+            s_studentCoursesPath[student][courseId].lessonsCompleted -= 1;
+        }
+        if (state == State.ON_HOLD) {
+            s_studentCoursesPath[student][courseId].courseState = State.ON_HOLD;
+        }
 
-//         s_idToCourse[s_courseIdCounter] = newCourse;
-//         emit CourseFactory_CertificateCreated(s_courseIdCounter);
+        
+        if (
+            s_studentCoursesPath[student][courseId].lessonsSubscribed
+                == s_studentCoursesPath[student][courseId].lessonsCompleted
+        ) {
+            s_studentCoursesPath[student][courseId].courseState = State.COMPLETED;
+        } else {
+            s_studentCoursesPath[student][courseId].courseState = State.SUBSCRIBED;
+        }
+    }
 
-//         return newCourse;
-//     }
-
-//     function removeCourse(uint256 courseId) public onlyRole(ADMIN) returns (bool) {
-//         s_idToCourse[courseId].creator = address(0);
-//         s_idToCourse[courseId].isOpen = false;
-//         //..todo
-//     }
-
-//     /**
-//      * Getters
-//      */
-//     //course counter starts from 1
-//     function getIdCounter() public view returns (uint256) {
-//         return s_courseIdCounter;
-//     }
-
-//     function getCourse(uint256 id) public view returns (CourseStruct memory) {
-//         return s_idToCourse[id];
-//     }
-
-//     function getCreator(uint256 id) public view returns (address) {
-//         return s_idToCourse[id].creator;
-//     }
-
-//     function isAdmin(address user) public view returns (bool) {
-//         return hasRole(ADMIN, user);
-//     }
-
-//     /**
-//      * Setters
-//      */
-//     function closeCourse() public {}
-
-//     function openCourse() public {}
-//     // PROXY
-
-//     function _authorizeUpgrade(address newImplementation) internal override onlyRole(UPGRADER_ROLE) {}
-// }
+    function _authorizeUpgrade(address newImplementation) internal override onlyRole(UPGRADER_ROLE) {}
+}
