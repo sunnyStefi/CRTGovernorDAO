@@ -43,8 +43,6 @@ contract CertificateNFTTest is Test {
         makeStuff = new MakeStuff();
         createStudentPath = new CreateStudentPath();
         timelock = new TimeLock(MIN_DELAY, proposers, executors);
-        crtToken = new CRToken(address(proxy));
-        governor = new CertificantsDAO(crtToken, timelock);
 
         (studentPathProxy, randomCourseId) = createStudentPath.run();
         bytes memory initializerData = abi.encodeWithSelector(
@@ -52,6 +50,8 @@ contract CertificateNFTTest is Test {
         );
 
         proxy = new ERC1967Proxy(address(certificateNFT), initializerData);
+        crtToken = new CRToken(address(proxy));
+        governor = new CertificantsDAO(crtToken, timelock);
 
         bytes32 PROPOSER_ROLE = timelock.PROPOSER_ROLE();
         bytes32 EXECUTOR_ROLE = timelock.EXECUTOR_ROLE();
@@ -76,22 +76,35 @@ contract CertificateNFTTest is Test {
         vm.stopPrank();
     }
 
-    function test_certifiedUserCanMintNFT() public {
+    function test_usersWhoDidNotCompleteAllCoursesCannotGetCertificate() public {
         vm.startPrank(ALICE_ADDRESS_ANVIL);
-        CertificateNFT(payable(proxy)).createCertificate(ALICE_ADDRESS_ANVIL, CERTIFICATE_ID_1, "0x");
+        vm.expectRevert(abi.encodeWithSelector(CertificateNFT.CertificateNFT_StudentHasNotCompletedHisPath.selector));
+        CertificateNFT(payable(proxy)).createCertificate(BOB_ADDRESS_ANVIL, CERTIFICATE_ID_1, "0x");
         vm.stopPrank();
-        crtToken.mint(ALICE_ADDRESS_ANVIL, 1);
-        crtToken.delegate(ALICE_ADDRESS_ANVIL);
-        assertEq(crtToken.balanceOf(ALICE_ADDRESS_ANVIL), 1);
     }
 
-    function test_certifiedUserCannotMintTooMuchNFT() public {
+    function test_studentIsEligibleForCertificate() public view {
+        uint256 actualResult = StudentPath(payable(studentPathProxy)).getCoursesCompleted(STUDENT_ADDRESS);
+        uint256 expectedResult = 1;
+        assertEq(actualResult, expectedResult);
+    }
+
+    function test_certifiedUserCanMintCrtTokens() public {
         vm.startPrank(ALICE_ADDRESS_ANVIL);
-        CertificateNFT(payable(proxy)).createCertificate(ALICE_ADDRESS_ANVIL, CERTIFICATE_ID_1, "0x");
+        CertificateNFT(payable(proxy)).createCertificate(STUDENT_ADDRESS, CERTIFICATE_ID_1, "0x");
+        crtToken.mint(STUDENT_ADDRESS, 1);
+        crtToken.delegate(STUDENT_ADDRESS);
+        vm.stopPrank();
+        assertEq(crtToken.balanceOf(STUDENT_ADDRESS), 1);
+    }
+
+    function test_certifiedUserCannotMintMoreTokensThanCertificatesOwned() public {
+        vm.startPrank(ALICE_ADDRESS_ANVIL);
+        CertificateNFT(payable(proxy)).createCertificate(STUDENT_ADDRESS, CERTIFICATE_ID_1, "0x");
         vm.stopPrank();
         vm.expectRevert(
             abi.encodeWithSelector(CRToken.CRToken_AmountOfTokenMintedMustBeLessOrEqualThanCertificatesEarned.selector)
         );
-        crtToken.mint(ALICE_ADDRESS_ANVIL, 10);
+        crtToken.mint(STUDENT_ADDRESS, 10);
     }
 }

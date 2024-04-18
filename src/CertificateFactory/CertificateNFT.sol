@@ -61,7 +61,7 @@ contract CertificateNFT is Initializable, ERC1155Upgradeable, AccessControlUpgra
         _disableInitializers();
     }
 
-    function initialize(address defaultAdmin, address upgrader /*, address studentPath*/) public initializer {
+    function initialize(address defaultAdmin, address upgrader, address studentPath) public initializer {
         __ERC1155_init("");
         __AccessControl_init();
         __UUPSUpgradeable_init();
@@ -76,7 +76,8 @@ contract CertificateNFT is Initializable, ERC1155Upgradeable, AccessControlUpgra
         _grantRole(UPGRADER_ROLE, upgrader);
 
         s_defaultAdmin = defaultAdmin;
-        // s_studentPathProxy = ERC1967Proxy(payable(studentPath));
+        s_studentPathProxy = ERC1967Proxy(payable(studentPath));
+        s_courseCompletedRequiredForCertificate = 1;
 
         emit DefaultRolesAssigned();
     }

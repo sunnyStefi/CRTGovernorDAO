@@ -12,11 +12,14 @@ import {EnumerableMap} from "@openzeppelin/contracts/utils/structs/EnumerableMap
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {CourseFactory} from "./CourseFactory.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 /**
  * @notice This contract govern the creation, transfer and management of certificates.
  */
 contract StudentPath is Initializable, AccessControlUpgradeable, UUPSUpgradeable {
+    using EnumerableSet for EnumerableSet.UintSet;
+
     enum State {
         EMPTY,
         SUBSCRIBED,
@@ -37,7 +40,7 @@ contract StudentPath is Initializable, AccessControlUpgradeable, UUPSUpgradeable
 
     address private s_defaultAdmin;
     uint256 private s_studentPathCounter;
-    uint256 private s_courseCompleted;
+    mapping(address => uint256) private s_courseCompleted;
 
     mapping(address => uint256) private s_studentToLessonSubscribed; //todo all
     mapping(address => mapping(string => State)) private s_studentLessonsPath;
@@ -112,7 +115,7 @@ contract StudentPath is Initializable, AccessControlUpgradeable, UUPSUpgradeable
     }
 
     function getCoursesCompleted(address student) public view returns (uint256) {
-        return s_courseCompleted;
+        return s_courseCompleted[student];
     }
     /**
      * Setters
@@ -145,10 +148,10 @@ contract StudentPath is Initializable, AccessControlUpgradeable, UUPSUpgradeable
                 == s_studentCoursesPath[student][courseId].lessonsCompleted
         ) {
             s_studentCoursesPath[student][courseId].courseState = State.COMPLETED;
-            s_courseCompleted += 1;
+            s_courseCompleted[student] += 1;
         } else {
             s_studentCoursesPath[student][courseId].courseState = State.SUBSCRIBED;
-            s_courseCompleted -= 1;
+            s_courseCompleted[student] -= 1;
         }
     }
 
@@ -156,6 +159,7 @@ contract StudentPath is Initializable, AccessControlUpgradeable, UUPSUpgradeable
         if (s_studentCoursesPath[student][courseId].courseState == State.EMPTY) {
             revert StudentPath_CoursePathNotInitialized();
         }
+
         //Lessons
         string[] memory courseLessons = CourseFactory(payable(s_courseFactoryProxy)).getAllLessonIds(courseId);
         uint256 allLessonsAmount = courseLessons.length;
@@ -165,12 +169,16 @@ contract StudentPath is Initializable, AccessControlUpgradeable, UUPSUpgradeable
         //Courses
         s_studentCoursesPath[student][courseId].courseState = state;
         if (state == State.EMPTY || state == State.SUBSCRIBED) {
+            //check previous state
             s_studentCoursesPath[student][courseId].lessonsCompleted = 0;
             s_studentCoursesPath[student][courseId].lessonsSubscribed = allLessonsAmount;
+            s_courseCompleted[student] -= 1;
         }
         if (state == State.COMPLETED) {
+            //check previous state
             s_studentCoursesPath[student][courseId].lessonsCompleted = allLessonsAmount;
             s_studentCoursesPath[student][courseId].lessonsSubscribed = allLessonsAmount;
+            s_courseCompleted[student] += 1;
         }
         if (state == State.CURRENTLY_ON_HOLD) {
             revert StudentPath_OnlyOneLessonCanBeOnHold();
