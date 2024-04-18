@@ -38,18 +38,20 @@ contract CertificateNFTTest is Test {
     function setUp() public {
         vm.startPrank(ALICE_ADDRESS_ANVIL);
         vm.deal(ALICE_ADDRESS_ANVIL, 100);
-        vm.deal(ALICE_ADDRESS_ANVIL, 100);
 
-        timelock = new TimeLock(MIN_DELAY, proposers, executors);
         certificateNFT = new CertificateNFT();
-        bytes memory initializerData =
-            abi.encodeWithSelector(CertificateNFT.initialize.selector, ALICE_ADDRESS_ANVIL, ALICE_ADDRESS_ANVIL);
-        proxy = new ERC1967Proxy(address(certificateNFT), initializerData);
-        crtToken = new CRToken(address(proxy));
-
-        governor = new CertificantsDAO(crtToken, timelock);
         makeStuff = new MakeStuff();
         createStudentPath = new CreateStudentPath();
+        timelock = new TimeLock(MIN_DELAY, proposers, executors);
+        crtToken = new CRToken(address(proxy));
+        governor = new CertificantsDAO(crtToken, timelock);
+
+        (studentPathProxy, randomCourseId) = createStudentPath.run();
+        bytes memory initializerData = abi.encodeWithSelector(
+            CertificateNFT.initialize.selector, ALICE_ADDRESS_ANVIL, ALICE_ADDRESS_ANVIL, address(studentPathProxy)
+        );
+
+        proxy = new ERC1967Proxy(address(certificateNFT), initializerData);
 
         bytes32 PROPOSER_ROLE = timelock.PROPOSER_ROLE();
         bytes32 EXECUTOR_ROLE = timelock.EXECUTOR_ROLE();
@@ -58,18 +60,16 @@ contract CertificateNFTTest is Test {
         timelock.grantRole(PROPOSER_ROLE, address(governor));
         timelock.grantRole(EXECUTOR_ROLE, address(0));
         timelock.revokeRole(ADMIN_ROLE, ALICE_ADDRESS_ANVIL);
-        vm.stopPrank();
 
-        makeStuff = new MakeStuff();
         makeStuff.transferOwnership(address(timelock)); //IMP! timelock owns the DAO and viceversa
 
-        (studentPathProxy, randomCourseId) = createStudentPath.run();
         StudentPath(payable(studentPathProxy)).setAllLessonsState(
             STUDENT_ADDRESS, randomCourseId, StudentPath.State.COMPLETED
         );
+        vm.stopPrank();
     }
 
-    function test_notCertifiedUserCannotMintNFT() public {
+    function test_notCertifiedUserCannotMintCrtTokens() public {
         vm.startPrank(ALICE_ADDRESS_ANVIL);
         vm.expectRevert(abi.encodeWithSelector(CRToken.CRToken_OnlyCertificantOwnersCanOwnCRToken.selector));
         crtToken.mint(ALICE_ADDRESS_ANVIL, 1);

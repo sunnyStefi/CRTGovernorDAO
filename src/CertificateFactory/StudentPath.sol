@@ -172,7 +172,7 @@ contract StudentPath is Initializable, AccessControlUpgradeable, UUPSUpgradeable
             s_studentCoursesPath[student][courseId].lessonsCompleted = allLessonsAmount;
             s_studentCoursesPath[student][courseId].lessonsSubscribed = allLessonsAmount;
         }
-        if (state == State.COMPLETED) {
+        if (state == State.CURRENTLY_ON_HOLD) {
             revert StudentPath_OnlyOneLessonCanBeOnHold();
         }
     }

@@ -63,7 +63,6 @@ contract CreateStudentPath is Script {
     ERC1967Proxy studentProxy;
 
     function run() external returns (address, uint256) {
-        vm.startPrank(ALICE_ADDRESS_ANVIL);
         createCourse = new CreateCourse();
         studentPath = new StudentPath();
         (courseProxy, randomCourseId) = createCourse.run();
@@ -73,7 +72,6 @@ contract CreateStudentPath is Script {
         studentProxy = new ERC1967Proxy(address(studentPath), initializerData);
 
         StudentPath(payable(studentProxy)).addCourseAndLessonsToPath(randomCourseId, STUDENT_ADDRESS);
-        vm.stopPrank();
         return (address(studentProxy), randomCourseId);
     }
 }
