@@ -5,5 +5,5 @@ install:
 
 push:
 	git add .
-	git commit -m "studentpath test"
+	git commit -m "studentpath tests"
 	git push origin addStudentpath

@@ -20,7 +20,8 @@ contract StudentPath is Initializable, AccessControlUpgradeable, UUPSUpgradeable
     enum State {
         SUBSCRIBED,
         ON_HOLD,
-        COMPLETED
+        COMPLETED,
+        INIT
     }
 
     enum ExamState {
@@ -46,6 +47,8 @@ contract StudentPath is Initializable, AccessControlUpgradeable, UUPSUpgradeable
     ERC1967Proxy s_courseFactoryProxy;
     uint256[49] __gap;
 
+    event Adding(uint256 a);
+
     constructor() {
         _disableInitializers();
     }
@@ -70,12 +73,14 @@ contract StudentPath is Initializable, AccessControlUpgradeable, UUPSUpgradeable
     function addCourseAndLessonsToPath(uint256 courseId, address student) public onlyRole(ADMIN) {
         string[] memory courseLessons = CourseFactory(payable(s_courseFactoryProxy)).getAllLessonIds(courseId);
         uint256 allLessonsAmount = courseLessons.length;
-        s_studentCoursesPath[student][courseId].courseState = State.SUBSCRIBED;
+        s_studentCoursesPath[student][courseId].courseState = State.INIT;
+
         s_studentCoursesPath[student][courseId].lessonsCompleted = 0;
         s_studentCoursesPath[student][courseId].lessonsSubscribed = allLessonsAmount;
+        emit Adding(s_studentCoursesPath[student][courseId].lessonsSubscribed);
 
         for (uint256 i = 0; i < allLessonsAmount; i++) {
-            s_studentLessonsPath[student][courseLessons[i]] = State.SUBSCRIBED;
+            s_studentLessonsPath[student][courseLessons[i]] = State.INIT;
         }
     }
 
@@ -89,10 +94,25 @@ contract StudentPath is Initializable, AccessControlUpgradeable, UUPSUpgradeable
     /**
      * Getters
      */
+    function getCourseState(uint256 courseId, address student) public view returns (State) {
+        return s_studentCoursesPath[student][courseId].courseState;
+    }
 
+    function getLessonCompleted(uint256 courseId, address student) public view returns (uint256) {
+        return s_studentCoursesPath[student][courseId].lessonsCompleted;
+    }
+
+    function getLessonSubscribed(uint256 courseId, address student) public view returns (uint256) {
+        return s_studentCoursesPath[student][courseId].lessonsSubscribed;
+    }
+
+    function getLessonState(address student, string memory lessonId) public view returns (State) {
+        return s_studentLessonsPath[student][lessonId];
+    }
     /**
      * Setters
      */
+
     function setLessonState(address student, uint256 courseId, string memory lessonId, State state)
         public
         onlyRole(ADMIN)

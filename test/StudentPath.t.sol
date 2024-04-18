@@ -37,5 +37,11 @@ contract StudenPathTest is Test {
         vm.startPrank(ALICE_ADDRESS_ANVIL);
         StudentPath(payable(studentProxy)).addCourseAndLessonsToPath(randomCourseId, STUDENT_ADDRESS);
         vm.stopPrank();
+        uint256 lessonLength = CourseFactory(courseProxy).getNumberOfLessons(randomCourseId);
+        string memory lastLessonId =
+            string(abi.encodePacked(Strings.toString(randomCourseId), "_", Strings.toString(lessonLength - 1)));
+
+        StudentPath.State actualState = StudentPath(payable(studentProxy)).getLessonState(STUDENT_ADDRESS, lastLessonId);
+        assertEq(uint8(actualState), uint8(StudentPath.State.INIT));
     }
 }
