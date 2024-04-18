@@ -8,6 +8,8 @@ import {MakeStuff} from "../src/DAO/MakeStuff.sol";
 import {TimeLock} from "../src/DAO/TimeLock.sol";
 import {CertificateNFT} from "../src/CertificateFactory/CertificateNFT.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {CreateStudentPath} from "../script/Interactions.sol";
+import {StudentPath} from "../src/CertificateFactory/StudentPath.sol";
 
 contract CertificateNFTTest is Test {
     TimeLock timelock;
@@ -16,13 +18,17 @@ contract CertificateNFTTest is Test {
     MakeStuff makeStuff;
     CertificateNFT certificateNFT;
     ERC1967Proxy proxy;
+    address studentPathProxy;
+    CreateStudentPath createStudentPath;
     address ALICE_ADDRESS_ANVIL = makeAddr("ALICE_ADDRESS_ANVIL");
     address BOB_ADDRESS_ANVIL = makeAddr("BOB_ADDRESS_ANVIL");
+    address STUDENT_ADDRESS = makeAddr("STUDENT_ADDRESS");
     uint256 constant MIN_DELAY = 3600; //after a vote passes /no pass until this goes by
     uint256 constant VOTING_DELAY = 1;
     uint256 constant VOTING_PERIOD = 50400;
     uint256 constant CERTIFICATE_ID_1 = 23534975;
     uint256 constant CERTIFICATE_ID_2 = 34545698;
+    uint256 randomCourseId;
     address[] proposers;
     address[] executors;
     uint256[] values;
@@ -43,6 +49,7 @@ contract CertificateNFTTest is Test {
 
         governor = new CertificantsDAO(crtToken, timelock);
         makeStuff = new MakeStuff();
+        createStudentPath = new CreateStudentPath();
 
         bytes32 PROPOSER_ROLE = timelock.PROPOSER_ROLE();
         bytes32 EXECUTOR_ROLE = timelock.EXECUTOR_ROLE();
@@ -55,6 +62,11 @@ contract CertificateNFTTest is Test {
 
         makeStuff = new MakeStuff();
         makeStuff.transferOwnership(address(timelock)); //IMP! timelock owns the DAO and viceversa
+
+        (studentPathProxy, randomCourseId) = createStudentPath.run();
+        StudentPath(payable(studentPathProxy)).setAllLessonsState(
+            STUDENT_ADDRESS, randomCourseId, StudentPath.State.COMPLETED
+        );
     }
 
     function test_notCertifiedUserCannotMintNFT() public {

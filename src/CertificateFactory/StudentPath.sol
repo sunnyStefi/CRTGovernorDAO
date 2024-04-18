@@ -18,10 +18,10 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
  */
 contract StudentPath is Initializable, AccessControlUpgradeable, UUPSUpgradeable {
     enum State {
+        EMPTY,
         SUBSCRIBED,
-        ON_HOLD,
-        COMPLETED,
-        INIT
+        CURRENTLY_ON_HOLD, //todo just one lesson
+        COMPLETED
     }
 
     enum ExamState {
@@ -37,6 +37,7 @@ contract StudentPath is Initializable, AccessControlUpgradeable, UUPSUpgradeable
 
     address private s_defaultAdmin;
     uint256 private s_studentPathCounter;
+    uint256 private s_courseCompleted;
 
     mapping(address => uint256) private s_studentToLessonSubscribed; //todo all
     mapping(address => mapping(string => State)) private s_studentLessonsPath;
@@ -47,7 +48,8 @@ contract StudentPath is Initializable, AccessControlUpgradeable, UUPSUpgradeable
     ERC1967Proxy s_courseFactoryProxy;
     uint256[49] __gap;
 
-    event Adding(uint256 a);
+    error StudentPath_CoursePathNotInitialized();
+    error StudentPath_OnlyOneLessonCanBeOnHold();
 
     constructor() {
         _disableInitializers();
@@ -73,14 +75,13 @@ contract StudentPath is Initializable, AccessControlUpgradeable, UUPSUpgradeable
     function addCourseAndLessonsToPath(uint256 courseId, address student) public onlyRole(ADMIN) {
         string[] memory courseLessons = CourseFactory(payable(s_courseFactoryProxy)).getAllLessonIds(courseId);
         uint256 allLessonsAmount = courseLessons.length;
-        s_studentCoursesPath[student][courseId].courseState = State.INIT;
+        s_studentCoursesPath[student][courseId].courseState = State.SUBSCRIBED;
 
         s_studentCoursesPath[student][courseId].lessonsCompleted = 0;
         s_studentCoursesPath[student][courseId].lessonsSubscribed = allLessonsAmount;
-        emit Adding(s_studentCoursesPath[student][courseId].lessonsSubscribed);
 
         for (uint256 i = 0; i < allLessonsAmount; i++) {
-            s_studentLessonsPath[student][courseLessons[i]] = State.INIT;
+            s_studentLessonsPath[student][courseLessons[i]] = State.SUBSCRIBED;
         }
     }
 
@@ -109,6 +110,10 @@ contract StudentPath is Initializable, AccessControlUpgradeable, UUPSUpgradeable
     function getLessonState(address student, string memory lessonId) public view returns (State) {
         return s_studentLessonsPath[student][lessonId];
     }
+
+    function getCoursesCompleted(address student) public view returns (uint256) {
+        return s_courseCompleted;
+    }
     /**
      * Setters
      */
@@ -117,6 +122,11 @@ contract StudentPath is Initializable, AccessControlUpgradeable, UUPSUpgradeable
         public
         onlyRole(ADMIN)
     {
+        //todo make modifier
+        if (s_studentCoursesPath[student][courseId].courseState == State.EMPTY) {
+            revert StudentPath_CoursePathNotInitialized();
+        }
+
         s_studentLessonsPath[student][lessonId] = state;
 
         //Set course states
@@ -126,8 +136,8 @@ contract StudentPath is Initializable, AccessControlUpgradeable, UUPSUpgradeable
         if (state == State.SUBSCRIBED) {
             s_studentCoursesPath[student][courseId].lessonsCompleted -= 1;
         }
-        if (state == State.ON_HOLD) {
-            s_studentCoursesPath[student][courseId].courseState = State.ON_HOLD;
+        if (state == State.CURRENTLY_ON_HOLD) {
+            s_studentCoursesPath[student][courseId].courseState = State.CURRENTLY_ON_HOLD;
         }
 
         if (
@@ -135,8 +145,35 @@ contract StudentPath is Initializable, AccessControlUpgradeable, UUPSUpgradeable
                 == s_studentCoursesPath[student][courseId].lessonsCompleted
         ) {
             s_studentCoursesPath[student][courseId].courseState = State.COMPLETED;
+            s_courseCompleted += 1;
         } else {
             s_studentCoursesPath[student][courseId].courseState = State.SUBSCRIBED;
+            s_courseCompleted -= 1;
+        }
+    }
+
+    function setAllLessonsState(address student, uint256 courseId, State state) public onlyRole(ADMIN) {
+        if (s_studentCoursesPath[student][courseId].courseState == State.EMPTY) {
+            revert StudentPath_CoursePathNotInitialized();
+        }
+        //Lessons
+        string[] memory courseLessons = CourseFactory(payable(s_courseFactoryProxy)).getAllLessonIds(courseId);
+        uint256 allLessonsAmount = courseLessons.length;
+        for (uint256 i = 0; i < allLessonsAmount; i++) {
+            s_studentLessonsPath[student][courseLessons[i]] = state;
+        }
+        //Courses
+        s_studentCoursesPath[student][courseId].courseState = state;
+        if (state == State.EMPTY || state == State.SUBSCRIBED) {
+            s_studentCoursesPath[student][courseId].lessonsCompleted = 0;
+            s_studentCoursesPath[student][courseId].lessonsSubscribed = allLessonsAmount;
+        }
+        if (state == State.COMPLETED) {
+            s_studentCoursesPath[student][courseId].lessonsCompleted = allLessonsAmount;
+            s_studentCoursesPath[student][courseId].lessonsSubscribed = allLessonsAmount;
+        }
+        if (state == State.COMPLETED) {
+            revert StudentPath_OnlyOneLessonCanBeOnHold();
         }
     }
 

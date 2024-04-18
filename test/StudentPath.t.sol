@@ -40,7 +40,7 @@ contract StudenPathTest is Test {
 
         StudentPath.State actualState =
             StudentPath(payable(studentProxy)).getLessonState(STUDENT_ADDRESS, getLastLessonId());
-        assertEq(uint8(actualState), uint8(StudentPath.State.INIT));
+        assertEq(uint8(actualState), uint8(StudentPath.State.SUBSCRIBED));
     }
 
     function test_lessonsCompletedAndCourseIncomplete() public {

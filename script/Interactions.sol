@@ -5,6 +5,7 @@ pragma solidity ^0.8.19;
 import {Script, console} from "forge-std/Script.sol";
 import {Test, console} from "forge-std/Test.sol";
 import {CourseFactory} from "../src/CertificateFactory/CourseFactory.sol";
+import {StudentPath} from "../src/CertificateFactory/StudentPath.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {VRFCoordinatorV2Mock} from "@chainlink/vrf/mocks/VRFCoordinatorV2Mock.sol";
 import {Vm} from "forge-std/Vm.sol";
@@ -49,5 +50,30 @@ contract CreateCourse is Script {
         vrfCoordinatorV2Mock.fulfillRandomWords(uint256(requestIdResult), address(proxy));
         Vm.Log[] memory entries = vm.getRecordedLogs();
         return (address(proxy), uint256(entries[0].topics[1]));
+    }
+}
+
+contract CreateStudentPath is Script {
+    uint256 randomCourseId;
+    address courseProxy;
+    address ALICE_ADDRESS_ANVIL = makeAddr("ALICE_ADDRESS_ANVIL");
+    address STUDENT_ADDRESS = makeAddr("STUDENT_ADDRESS");
+    CreateCourse createCourse;
+    StudentPath studentPath;
+    ERC1967Proxy studentProxy;
+
+    function run() external returns (address, uint256) {
+        vm.startPrank(ALICE_ADDRESS_ANVIL);
+        createCourse = new CreateCourse();
+        studentPath = new StudentPath();
+        (courseProxy, randomCourseId) = createCourse.run();
+        bytes memory initializerData = abi.encodeWithSelector(
+            StudentPath.initialize.selector, ALICE_ADDRESS_ANVIL, ALICE_ADDRESS_ANVIL, address(courseProxy)
+        );
+        studentProxy = new ERC1967Proxy(address(studentPath), initializerData);
+
+        StudentPath(payable(studentProxy)).addCourseAndLessonsToPath(randomCourseId, STUDENT_ADDRESS);
+        vm.stopPrank();
+        return (address(studentProxy), randomCourseId);
     }
 }
