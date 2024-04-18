@@ -37,11 +37,94 @@ contract StudenPathTest is Test {
         vm.startPrank(ALICE_ADDRESS_ANVIL);
         StudentPath(payable(studentProxy)).addCourseAndLessonsToPath(randomCourseId, STUDENT_ADDRESS);
         vm.stopPrank();
-        uint256 lessonLength = CourseFactory(courseProxy).getNumberOfLessons(randomCourseId);
-        string memory lastLessonId =
-            string(abi.encodePacked(Strings.toString(randomCourseId), "_", Strings.toString(lessonLength - 1)));
 
-        StudentPath.State actualState = StudentPath(payable(studentProxy)).getLessonState(STUDENT_ADDRESS, lastLessonId);
+        StudentPath.State actualState =
+            StudentPath(payable(studentProxy)).getLessonState(STUDENT_ADDRESS, getLastLessonId());
         assertEq(uint8(actualState), uint8(StudentPath.State.INIT));
+    }
+
+    function test_lessonsCompletedAndCourseIncomplete() public {
+        vm.startPrank(ALICE_ADDRESS_ANVIL);
+
+        StudentPath(payable(studentProxy)).addCourseAndLessonsToPath(randomCourseId, STUDENT_ADDRESS);
+
+        StudentPath(payable(studentProxy)).setLessonState(
+            STUDENT_ADDRESS, randomCourseId, getLessonId(0), StudentPath.State.COMPLETED
+        );
+        StudentPath(payable(studentProxy)).setLessonState(
+            STUDENT_ADDRESS, randomCourseId, getLastLessonId(), StudentPath.State.COMPLETED
+        );
+        uint256 actualLessonCompleted =
+            StudentPath(payable(studentProxy)).getLessonCompleted(randomCourseId, STUDENT_ADDRESS);
+        uint256 expectedLessonCompleted = 2;
+        assertEq(actualLessonCompleted, expectedLessonCompleted);
+
+        StudentPath.State actualCourseState =
+            StudentPath(payable(studentProxy)).getCourseState(randomCourseId, STUDENT_ADDRESS);
+        StudentPath.State expectedCourseState = StudentPath.State.SUBSCRIBED;
+        assertEq(uint8(actualCourseState), uint8(expectedCourseState));
+
+        vm.stopPrank();
+    }
+
+    function test_lessonsAndCourseCompleted() public {
+        vm.startPrank(ALICE_ADDRESS_ANVIL);
+
+        StudentPath(payable(studentProxy)).addCourseAndLessonsToPath(randomCourseId, STUDENT_ADDRESS);
+
+        StudentPath(payable(studentProxy)).setLessonState(
+            STUDENT_ADDRESS, randomCourseId, getLessonId(0), StudentPath.State.COMPLETED
+        );
+        StudentPath(payable(studentProxy)).setLessonState(
+            STUDENT_ADDRESS, randomCourseId, getLessonId(1), StudentPath.State.COMPLETED
+        );
+        StudentPath(payable(studentProxy)).setLessonState(
+            STUDENT_ADDRESS, randomCourseId, getLastLessonId(), StudentPath.State.COMPLETED
+        );
+
+        StudentPath.State actualCourseState =
+            StudentPath(payable(studentProxy)).getCourseState(randomCourseId, STUDENT_ADDRESS);
+        StudentPath.State expectedCourseState = StudentPath.State.COMPLETED;
+        assertEq(uint8(actualCourseState), uint8(expectedCourseState));
+        vm.stopPrank();
+    }
+
+    function test_lessonsCompleteAndCourseIncompleteWithResubscription() public {
+        vm.startPrank(ALICE_ADDRESS_ANVIL);
+
+        StudentPath(payable(studentProxy)).addCourseAndLessonsToPath(randomCourseId, STUDENT_ADDRESS);
+
+        StudentPath(payable(studentProxy)).setLessonState(
+            STUDENT_ADDRESS, randomCourseId, getLessonId(0), StudentPath.State.COMPLETED
+        );
+        StudentPath(payable(studentProxy)).setLessonState(
+            STUDENT_ADDRESS, randomCourseId, getLessonId(1), StudentPath.State.COMPLETED
+        );
+        StudentPath(payable(studentProxy)).setLessonState(
+            STUDENT_ADDRESS, randomCourseId, getLessonId(1), StudentPath.State.SUBSCRIBED
+        );
+        StudentPath(payable(studentProxy)).setLessonState(
+            STUDENT_ADDRESS, randomCourseId, getLastLessonId(), StudentPath.State.COMPLETED
+        );
+
+        StudentPath.State actualCourseState =
+            StudentPath(payable(studentProxy)).getCourseState(randomCourseId, STUDENT_ADDRESS);
+        StudentPath.State expectedCourseState = StudentPath.State.SUBSCRIBED;
+
+        assertEq(uint8(actualCourseState), uint8(expectedCourseState));
+        uint256 actualLessonCompleted =
+            StudentPath(payable(studentProxy)).getLessonCompleted(randomCourseId, STUDENT_ADDRESS);
+        uint256 expectedLessonCompleted = 2;
+        assertEq(actualLessonCompleted, expectedLessonCompleted);
+        vm.stopPrank();
+    }
+
+    function getLastLessonId() public view returns (string memory) {
+        uint256 lessonLength = CourseFactory(courseProxy).getNumberOfLessons(randomCourseId);
+        return string(abi.encodePacked(Strings.toString(randomCourseId), "_", Strings.toString(lessonLength - 1)));
+    }
+
+    function getLessonId(uint256 index) public view returns (string memory) {
+        return string(abi.encodePacked(Strings.toString(randomCourseId), "_", Strings.toString(index)));
     }
 }
