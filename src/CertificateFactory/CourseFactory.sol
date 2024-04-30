@@ -144,14 +144,15 @@ contract CourseFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
             _quizUris
         );
 
-        uint256 requestId = s_vrfCoordinator.requestRandomWords(
+        uint256 reqId = s_vrfCoordinator.requestRandomWords(
             s_gasLane, s_subscriptionId, REQUEST_CONFIRMATIONS, s_callbackgaslimit, NUM_WORDS
         );
 
-        emit CourseFactory_CertificateCreatedAndRequestSent(requestId);
+        emit CourseFactory_CertificateCreatedAndRequestSent(reqId);
 
-        return (s_createdCourse, requestId);
+        return (s_createdCourse, reqId);
     }
+    
     /**
      * VRF Callback
      * - receiving random words
