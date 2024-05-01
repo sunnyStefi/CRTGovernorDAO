@@ -100,22 +100,10 @@ contract StudenPathTest is Test {
         StudentPath(payable(studentProxy)).setLessonState(
             STUDENT_ADDRESS, randomCourseId, getLessonId(1), StudentPath.State.COMPLETED
         );
+        vm.expectRevert(abi.encodeWithSelector(StudentPath.StudentPath_StateOrderNotCongruentWithStateFlow.selector,1,1));
         StudentPath(payable(studentProxy)).setLessonState(
             STUDENT_ADDRESS, randomCourseId, getLessonId(1), StudentPath.State.SUBSCRIBED
         );
-        StudentPath(payable(studentProxy)).setLessonState(
-            STUDENT_ADDRESS, randomCourseId, getLastLessonId(), StudentPath.State.COMPLETED
-        );
-
-        StudentPath.State actualCourseState =
-            StudentPath(payable(studentProxy)).getCourseState(randomCourseId, STUDENT_ADDRESS);
-        StudentPath.State expectedCourseState = StudentPath.State.SUBSCRIBED;
-
-        assertEq(uint8(actualCourseState), uint8(expectedCourseState));
-        uint256 actualLessonCompleted =
-            StudentPath(payable(studentProxy)).getLessonCompleted(randomCourseId, STUDENT_ADDRESS);
-        uint256 expectedLessonCompleted = 2;
-        assertEq(actualLessonCompleted, expectedLessonCompleted);
         vm.stopPrank();
     }
 

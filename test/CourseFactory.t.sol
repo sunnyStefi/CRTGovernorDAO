@@ -65,7 +65,7 @@ contract CourseFactoryTest is Test {
         uint256 requestIdResult;
         vm.recordLogs();
         (createdCourse, requestIdResult) = CourseFactory(payable(proxy)).createCourse(
-            TEST_URI, placesTotal, TEST_URI_ARRAY, TEST_URI, TEST_LESSON_URI_ARRAY, TEST_LESSON_URI_ARRAY
+            TEST_URI, placesTotal, TEST_URI, TEST_LESSON_URI_ARRAY, TEST_LESSON_URI_ARRAY
         ); //emit requestId
         vm.stopPrank();
         Vm.Log[] memory entries = vm.getRecordedLogs();

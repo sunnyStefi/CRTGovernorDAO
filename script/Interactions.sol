@@ -44,7 +44,7 @@ contract CreateCourse is Script {
         vrfCoordinatorV2Mock.addConsumer(subscriptionId, address(proxy));
         uint256 requestIdResult;
         (createdCourse, requestIdResult) = CourseFactory(payable(proxy)).createCourse(
-            TEST_URI, placesTotal, TEST_URI_ARRAY, TEST_URI, TEST_LESSON_URI_ARRAY, TEST_LESSON_URI_ARRAY
+            TEST_URI, placesTotal, TEST_URI, TEST_LESSON_URI_ARRAY, TEST_LESSON_URI_ARRAY
         );
         vm.recordLogs();
         vrfCoordinatorV2Mock.fulfillRandomWords(uint256(requestIdResult), address(proxy));

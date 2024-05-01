@@ -23,13 +23,10 @@ contract StudentPath is Initializable, AccessControlUpgradeable, UUPSUpgradeable
     enum State {
         EMPTY,
         SUBSCRIBED,
-        CURRENTLY_ON_HOLD, //todo just one lesson
+        SHORT_TERM_QUIZ_PASSED,
+        DAILY_TERM_QUIZ_PASSED,
+        WEEKLY_TERM_QUIZ_PASSED,
         COMPLETED
-    }
-
-    enum ExamState {
-        FAILED,
-        SUCCEEDED
     }
 
     struct CourseState {
@@ -53,6 +50,14 @@ contract StudentPath is Initializable, AccessControlUpgradeable, UUPSUpgradeable
 
     error StudentPath_CoursePathNotInitialized();
     error StudentPath_OnlyOneLessonCanBeOnHold();
+    error StudentPath_StateOrderNotCongruentWithStateFlow(State currentState, State newState);
+
+    modifier checkState(State currentState, State newState) {
+        if (currentState >= newState) {
+            revert StudentPath_StateOrderNotCongruentWithStateFlow(currentState, newState);
+        }
+        _;
+    }
 
     constructor() {
         _disableInitializers();
@@ -88,13 +93,6 @@ contract StudentPath is Initializable, AccessControlUpgradeable, UUPSUpgradeable
         }
     }
 
-    function submitCourseTestResult(address student, uint256 courseId, ExamState result) public onlyRole(ADMIN) {}
-
-    function submitLessonQuizResult(address student, uint256 courseId, string memory lessonId, ExamState result)
-        public
-        onlyRole(ADMIN)
-    {}
-
     /**
      * Getters
      */
@@ -123,6 +121,7 @@ contract StudentPath is Initializable, AccessControlUpgradeable, UUPSUpgradeable
 
     function setLessonState(address student, uint256 courseId, string memory lessonId, State state)
         public
+        checkState(s_studentCoursesPath[student][courseId].courseState, state)
         onlyRole(ADMIN)
     {
         //todo make modifier
@@ -138,9 +137,6 @@ contract StudentPath is Initializable, AccessControlUpgradeable, UUPSUpgradeable
         }
         if (state == State.SUBSCRIBED) {
             s_studentCoursesPath[student][courseId].lessonsCompleted -= 1;
-        }
-        if (state == State.CURRENTLY_ON_HOLD) {
-            s_studentCoursesPath[student][courseId].courseState = State.CURRENTLY_ON_HOLD;
         }
 
         if (
@@ -181,9 +177,6 @@ contract StudentPath is Initializable, AccessControlUpgradeable, UUPSUpgradeable
             s_studentCoursesPath[student][courseId].lessonsCompleted = allLessonsAmount;
             s_studentCoursesPath[student][courseId].lessonsSubscribed = allLessonsAmount;
             s_courseCompleted[student] += 1;
-        }
-        if (state == State.CURRENTLY_ON_HOLD) {
-            revert StudentPath_OnlyOneLessonCanBeOnHold();
         }
     }
 
