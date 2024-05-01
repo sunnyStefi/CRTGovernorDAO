@@ -23,7 +23,7 @@ contract CertificantsDAO is
 {
     constructor(CRToken _token, TimelockController _timelock)
         Governor("CertificantsDAO")
-        GovernorSettings(1, /* 1 day */ 50400, /* 1 week */ 0)
+        GovernorSettings(1, /* 1 day */ 50400, /* 1 week */ 0) //VOTING DELAY, PERIOD
         GovernorVotes(_token)
         GovernorVotesQuorumFraction(10)
         GovernorTimelockControl(_timelock)

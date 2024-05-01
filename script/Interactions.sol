@@ -75,3 +75,4 @@ contract CreateStudentPath is Script {
         return (address(studentProxy), randomCourseId);
     }
 }
+

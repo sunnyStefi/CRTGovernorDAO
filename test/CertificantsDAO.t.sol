@@ -9,7 +9,7 @@ import {TimeLock} from "../src/DAO/TimeLock.sol";
 import {CertificateNFT} from "../src/CertificateFactory/CertificateNFT.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {StudentPath} from "../src/CertificateFactory/StudentPath.sol";
-import {CreateCourse} from "../script/Interactions.sol";
+import {CreateStudentPath} from "../script/Interactions.sol";
 
 contract CertificantsDAOTest is Test {
     TimeLock timelock;
@@ -17,13 +17,13 @@ contract CertificantsDAOTest is Test {
     CertificantsDAO governor;
     MakeStuff makeStuff;
     CertificateNFT certificateNFT;
-    StudentPath studentPath;
-    CreateCourse createCourse;
+    CreateStudentPath createStudentPath;
     ERC1967Proxy proxy;
     address ALICE_ADDRESS_ANVIL = makeAddr("ALICE_ADDRESS_ANVIL");
+    address STUDENT_ADDRESS = makeAddr("STUDENT_ADDRESS_ANVIL");
     address courseProxy;
+    address studentProxy;
     uint256 randomCourseId;
-    ERC1967Proxy studentProxy;
     uint256 constant MIN_DELAY = 3600; //after a vote passes /no pass until this goes by
     uint256 constant VOTING_DELAY = 1;
     uint256 constant VOTING_PERIOD = 50400;
@@ -39,15 +39,14 @@ contract CertificantsDAOTest is Test {
 
         timelock = new TimeLock(MIN_DELAY, proposers, executors);
         certificateNFT = new CertificateNFT();
-        createCourse = new CreateCourse();
-        studentPath = new StudentPath();
-        (courseProxy, randomCourseId) = createCourse.run();
-        bytes memory initializerDataStudentPath = abi.encodeWithSelector(
-            StudentPath.initialize.selector, ALICE_ADDRESS_ANVIL, ALICE_ADDRESS_ANVIL, address(courseProxy)
-        );
-        studentProxy = new ERC1967Proxy(address(studentPath), initializerDataStudentPath);
+        createStudentPath = new CreateStudentPath();
+        (studentProxy, randomCourseId) = createStudentPath.run();
         bytes memory initializerDataCertificate = abi.encodeWithSelector(
-            CertificateNFT.initialize.selector, ALICE_ADDRESS_ANVIL, ALICE_ADDRESS_ANVIL, address(studentProxy)
+            CertificateNFT.initialize.selector, ALICE_ADDRESS_ANVIL, ALICE_ADDRESS_ANVIL, studentProxy
+        );
+        StudentPath(payable(studentProxy)).addCourseAndLessonsToPath(randomCourseId, ALICE_ADDRESS_ANVIL);
+        StudentPath(payable(studentProxy)).setAllLessonsState(
+            ALICE_ADDRESS_ANVIL, randomCourseId, StudentPath.State.COMPLETED
         );
         proxy = new ERC1967Proxy(address(certificateNFT), initializerDataCertificate);
         crtToken = new CRToken(address(proxy));
@@ -80,33 +79,32 @@ contract CertificantsDAOTest is Test {
     function test_governanceUpdatesBox() public {
         // 1. Someone has to Propose to DAO
         uint256 valueToStore = 77;
-
         string memory description = "Store 77 in makestuff please";
         calldatas.push(abi.encodeWithSignature("store(uint256)", valueToStore));
         values.push(0);
         targets.push(address(makeStuff));
 
-        uint256 propId = governor.propose(targets, values, calldatas, description); //PENDING
+        uint256 propId = governor.propose(targets, values, calldatas, description);
 
-        assertEq(uint256(governor.state(propId)), 0);
+        assertEq(uint256(governor.state(propId)), 0); //PENDING
 
         vm.warp(block.timestamp + VOTING_DELAY + 1);
         vm.roll(block.number + VOTING_DELAY + 1);
+        assertEq(uint256(governor.state(propId)), 1); //after some VOTING DELAY >> ACTIVE
 
-        assertEq(uint256(governor.state(propId)), 1); //ACTIVE
-
-        // 2. People have to Vote
+        // 2. People with certificates can vote
         uint8 way = 1;
         console.log("Balance");
         console.log(crtToken.balanceOf(ALICE_ADDRESS_ANVIL));
 
         vm.startPrank(ALICE_ADDRESS_ANVIL);
-
         governor.castVote(propId, way);
         vm.stopPrank();
 
-        vm.warp(block.timestamp + VOTING_PERIOD + 1);
+        crtToken.getVotes(ALICE_ADDRESS_ANVIL);
+
         vm.roll(block.number + VOTING_PERIOD + 1);
+        vm.warp(block.timestamp + VOTING_PERIOD + 1);
         assertEq(uint256(governor.state(propId)), 4); //SUCCEEDED 4 or DEFEATED 3
 
         // 3. Queue
