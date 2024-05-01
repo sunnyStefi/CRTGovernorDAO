@@ -44,9 +44,9 @@ contract CertificantsDAOTest is Test {
         bytes memory initializerDataCertificate = abi.encodeWithSelector(
             CertificateNFT.initialize.selector, ALICE_ADDRESS_ANVIL, ALICE_ADDRESS_ANVIL, studentProxy
         );
-        StudentPath(payable(studentProxy)).addCourseAndLessonsToPath(randomCourseId, ALICE_ADDRESS_ANVIL);
+        StudentPath(payable(studentProxy)).addCourseAndLessonsToPath(randomCourseId, STUDENT_ADDRESS);
         StudentPath(payable(studentProxy)).setAllLessonsState(
-            ALICE_ADDRESS_ANVIL, randomCourseId, StudentPath.State.COMPLETED
+            STUDENT_ADDRESS, randomCourseId, StudentPath.State.COMPLETED
         );
         proxy = new ERC1967Proxy(address(certificateNFT), initializerDataCertificate);
         crtToken = new CRToken(address(proxy));
@@ -62,9 +62,9 @@ contract CertificantsDAOTest is Test {
         timelock.revokeRole(ADMIN_ROLE, ALICE_ADDRESS_ANVIL);
 
         //certificate needed first
-        CertificateNFT(payable(proxy)).createCertificate(ALICE_ADDRESS_ANVIL, 123, "0x");
-        crtToken.mint(ALICE_ADDRESS_ANVIL, 1);
-        crtToken.delegate(ALICE_ADDRESS_ANVIL);
+        CertificateNFT(payable(proxy)).createCertificate(STUDENT_ADDRESS, 123, "0x");
+        crtToken.mint(STUDENT_ADDRESS, 1);
+        crtToken.delegate(STUDENT_ADDRESS);
         vm.stopPrank();
 
         makeStuff = new MakeStuff();
@@ -95,13 +95,11 @@ contract CertificantsDAOTest is Test {
         // 2. People with certificates can vote
         uint8 way = 1;
         console.log("Balance");
-        console.log(crtToken.balanceOf(ALICE_ADDRESS_ANVIL));
+        console.log(crtToken.balanceOf(STUDENT_ADDRESS));
 
-        vm.startPrank(ALICE_ADDRESS_ANVIL);
+        vm.startPrank(STUDENT_ADDRESS);
         governor.castVote(propId, way);
         vm.stopPrank();
-
-        crtToken.getVotes(ALICE_ADDRESS_ANVIL);
 
         vm.roll(block.number + VOTING_PERIOD + 1);
         vm.warp(block.timestamp + VOTING_PERIOD + 1);
