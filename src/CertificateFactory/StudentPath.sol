@@ -35,16 +35,14 @@ contract StudentPath is Initializable, AccessControlUpgradeable, UUPSUpgradeable
         uint256 lessonsSubscribed;
     }
 
-    address private s_defaultAdmin;
     uint256 private s_studentPathCounter;
-    mapping(address => uint256) private s_courseCompleted;
-
-    mapping(address => uint256) private s_studentToLessonSubscribed; //todo all
-    mapping(address => mapping(string => State)) private s_studentLessonsPath;
-    mapping(address => mapping(uint256 => CourseState)) private s_studentCoursesPath;
-
+    address private s_defaultAdmin;
     bytes32 public constant ADMIN = keccak256("ADMIN");
     bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
+    mapping(address => uint256) private s_courseCompleted;
+    mapping(address => uint256) private s_studentToLessonSubscribed;
+    mapping(address => mapping(uint256 => CourseState)) private s_studentCoursesPath;
+    mapping(address => mapping(string => State)) private s_studentLessonsPath;
     ERC1967Proxy s_courseFactoryProxy;
     uint256[49] __gap;
 
@@ -124,7 +122,6 @@ contract StudentPath is Initializable, AccessControlUpgradeable, UUPSUpgradeable
         checkState(s_studentCoursesPath[student][courseId].courseState, state)
         onlyRole(ADMIN)
     {
-        //todo make modifier
         if (s_studentCoursesPath[student][courseId].courseState == State.EMPTY) {
             revert StudentPath_CoursePathNotInitialized();
         }

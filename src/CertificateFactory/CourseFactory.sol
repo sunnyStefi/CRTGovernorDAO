@@ -17,42 +17,14 @@ import {VRFConsumerBaseV2} from "@chainlink/vrf/VRFConsumerBaseV2.sol";
  * @notice This contract govern the creation, transfer and management of certificates.
  */
 contract CourseFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeable, VRFConsumerBaseV2 {
-    enum State {
-        OPEN,
-        PENDING
-    }
-
     using Math for uint256;
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableSet for EnumerableSet.UintSet;
 
-    uint16 private REQUEST_CONFIRMATIONS = 3;
-    uint32 private NUM_WORDS; //do not assign variable here
-    bytes32 public constant ADMIN = keccak256("ADMIN");
-    bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
-    VRFCoordinatorV2Interface private s_vrfCoordinator;
-    bytes32 private s_gasLane;
-    uint64 private s_subscriptionId;
-    uint32 private s_callbackgaslimit;
-    State private s_currentRequestState;
-    CourseStruct s_createdCourse;
-
-    event CourseFactory_CourseIdReceived(uint256 indexed id);
-    event CourseFactory_CertificateCreatedAndRequestSent(uint256 indexed id);
-    event CourseFactory_DefaultRolesAssigned();
-    event NumberOfLessons(uint256 indexed num);
-
-    error CourseFactory_IncorrectState();
-    error CourseFactory_CourseAlreadyExists();
-    error CourseFactory_EachLessonMustHaveOneQuiz();
-
-    address private s_defaultAdmin;
-    uint256 s_lastRandomNumber;
-
-    uint256 s_courseIdCounter;
-    mapping(uint256 => CourseStruct) private s_idToCourse;
-
-    uint256[49] __gap;
+    enum State {
+        OPEN,
+        PENDING
+    }
 
     struct CourseStruct {
         //0. others
@@ -71,6 +43,32 @@ contract CourseFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
         string[] lessonsUris;
         string[] quizUris;
     }
+
+    uint16 private REQUEST_CONFIRMATIONS = 3;
+    uint32 private NUM_WORDS; //do not assign variables here (proxy)
+    uint32 private s_callbackgaslimit;
+    uint64 private s_subscriptionId;
+    uint256 s_lastRandomNumber;
+    uint256 s_courseIdCounter;
+    address private s_defaultAdmin;
+    bytes32 public constant ADMIN = keccak256("ADMIN");
+    bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
+    bytes32 private s_gasLane;
+    mapping(uint256 => CourseStruct) private s_idToCourse;
+    State private s_currentRequestState;
+    CourseStruct s_createdCourse;
+    VRFCoordinatorV2Interface private s_vrfCoordinator;
+
+    event CourseFactory_CourseIdReceived(uint256 indexed id);
+    event CourseFactory_CertificateCreatedAndRequestSent(uint256 indexed id);
+    event CourseFactory_DefaultRolesAssigned();
+    event NumberOfLessons(uint256 indexed num);
+
+    error CourseFactory_IncorrectState();
+    error CourseFactory_CourseAlreadyExists();
+    error CourseFactory_EachLessonMustHaveOneQuiz();
+
+    uint256[49] __gap;
 
     constructor(address vrfCoordinator) VRFConsumerBaseV2(vrfCoordinator) {
         _disableInitializers();

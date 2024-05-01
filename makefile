@@ -5,5 +5,5 @@ install:
 
 push:
 	git add .
-	git commit -m "readme"
+	git commit -m "readme, clean up"
 	git push origin addStudentpath

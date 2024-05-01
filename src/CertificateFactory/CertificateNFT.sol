@@ -20,27 +20,6 @@ contract CertificateNFT is Initializable, ERC1155Upgradeable, AccessControlUpgra
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableSet for EnumerableSet.UintSet;
 
-    bytes32 public constant ADMIN = keccak256("ADMIN");
-    bytes32 public constant EVALUATOR = keccak256("EVALUATOR");
-    bytes32 public constant STUDENT = keccak256("STUDENT"); //todo assign
-    bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
-
-    event CertificateCreated();
-    event DefaultRolesAssigned();
-
-    error CertificateNFT_StudentHasNotCompletedHisPath();
-
-    address private s_defaultAdmin;
-
-    mapping(uint256 => CertificateStruct) private s_certificates;
-    mapping(address => uint256) private s_certificatesOwned;
-    EnumerableSet.UintSet s_certificatesIds;
-    EnumerableSet.AddressSet s_certificatesOwners;
-    uint256 private s_courseCompletedRequiredForCertificate;
-    ERC1967Proxy s_studentPathProxy;
-
-    uint256[49] __gap;
-
     struct CertificateStruct {
         uint256 placeFee;
         uint256 totalPlacesAvailable;
@@ -50,12 +29,24 @@ contract CertificateNFT is Initializable, ERC1155Upgradeable, AccessControlUpgra
         string[] lessonsUris;
     }
 
-    struct EvaluatedStudent {
-        uint256 mark;
-        uint256 date;
-        address student;
-        address evaluator;
-    }
+    uint256 private s_courseCompletedRequiredForCertificate;
+    address private s_defaultAdmin;
+    bytes32 public constant ADMIN = keccak256("ADMIN");
+    bytes32 public constant EVALUATOR = keccak256("EVALUATOR");
+    bytes32 public constant STUDENT = keccak256("STUDENT"); //todo assign
+    bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
+    mapping(uint256 => CertificateStruct) private s_certificates;
+    mapping(address => uint256) private s_certificatesOwned;
+    EnumerableSet.UintSet s_certificatesIds;
+    EnumerableSet.AddressSet s_certificatesOwners;
+    ERC1967Proxy s_studentPathProxy;
+
+    uint256[49] __gap; 
+
+    event CertificateCreated();
+    event DefaultRolesAssigned();
+
+    error CertificateNFT_StudentHasNotCompletedHisPath();
 
     constructor() {
         _disableInitializers();
