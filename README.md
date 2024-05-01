@@ -20,7 +20,7 @@ Each course is of exclusive participation, having a finite number of available p
 ### 2. StudentPath
 
 The user (Student) will have his own path, where all the courses he needs to follow are stored.
-Each course is formed a variable number of lessons, which have their own content and their relative quiz.
+Each course is made of a set of lessons, which have their own content and their relative quiz.
 
 A raw memory repetition pattern process has been implemented to let student retain information and reinforce their knowledge:
 
