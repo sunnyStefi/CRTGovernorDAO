@@ -21,6 +21,9 @@ contract CertificantsDAOTest is Test {
     CreateCourse createCourse;
     ERC1967Proxy proxy;
     address ALICE_ADDRESS_ANVIL = makeAddr("ALICE_ADDRESS_ANVIL");
+    address courseProxy;
+    uint256 randomCourseId;
+    ERC1967Proxy studentProxy;
     uint256 constant MIN_DELAY = 3600; //after a vote passes /no pass until this goes by
     uint256 constant VOTING_DELAY = 1;
     uint256 constant VOTING_PERIOD = 50400;
@@ -38,12 +41,16 @@ contract CertificantsDAOTest is Test {
         certificateNFT = new CertificateNFT();
         createCourse = new CreateCourse();
         studentPath = new StudentPath();
-        bytes memory initializerData = abi.encodeWithSelector(
-            CertificateNFT.initialize.selector, ALICE_ADDRESS_ANVIL, ALICE_ADDRESS_ANVIL, address(studentPath)
+        (courseProxy, randomCourseId) = createCourse.run();
+        bytes memory initializerDataStudentPath = abi.encodeWithSelector(
+            StudentPath.initialize.selector, ALICE_ADDRESS_ANVIL, ALICE_ADDRESS_ANVIL, address(courseProxy)
         );
-        proxy = new ERC1967Proxy(address(certificateNFT), initializerData);
+        studentProxy = new ERC1967Proxy(address(studentPath), initializerDataStudentPath);
+        bytes memory initializerDataCertificate = abi.encodeWithSelector(
+            CertificateNFT.initialize.selector, ALICE_ADDRESS_ANVIL, ALICE_ADDRESS_ANVIL, address(studentProxy)
+        );
+        proxy = new ERC1967Proxy(address(certificateNFT), initializerDataCertificate);
         crtToken = new CRToken(address(proxy));
-
         governor = new CertificantsDAO(crtToken, timelock);
         makeStuff = new MakeStuff();
 
