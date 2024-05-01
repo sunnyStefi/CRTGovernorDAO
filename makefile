@@ -5,5 +5,5 @@ install:
 
 push:
 	git add .
-	git commit -m "added studentpath to CertificateNFT"
+	git commit -m "readme"
 	git push origin addStudentpath
