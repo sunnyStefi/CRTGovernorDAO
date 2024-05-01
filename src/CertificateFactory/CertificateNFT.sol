@@ -10,6 +10,8 @@ import {ERC165Upgradeable} from "@openzeppelin/contracts-upgradeable/utils/intro
 import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import {StudentPath} from "./StudentPath.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 /**
  * @notice This contract govern the creation, transfer and management of certificates.
@@ -26,12 +28,16 @@ contract CertificateNFT is Initializable, ERC1155Upgradeable, AccessControlUpgra
     event CertificateCreated();
     event DefaultRolesAssigned();
 
+    error CertificateNFT_StudentHasNotCompletedHisPath();
+
     address private s_defaultAdmin;
 
     mapping(uint256 => CertificateStruct) private s_certificates;
     mapping(address => uint256) private s_certificatesOwned;
     EnumerableSet.UintSet s_certificatesIds;
     EnumerableSet.AddressSet s_certificatesOwners;
+    uint256 private s_courseCompletedRequiredForCertificate;
+    ERC1967Proxy s_studentPathProxy;
 
     uint256[49] __gap;
 
@@ -55,7 +61,7 @@ contract CertificateNFT is Initializable, ERC1155Upgradeable, AccessControlUpgra
         _disableInitializers();
     }
 
-    function initialize(address defaultAdmin, address upgrader) public initializer {
+    function initialize(address defaultAdmin, address upgrader, address studentPath) public initializer {
         __ERC1155_init("");
         __AccessControl_init();
         __UUPSUpgradeable_init();
@@ -70,11 +76,19 @@ contract CertificateNFT is Initializable, ERC1155Upgradeable, AccessControlUpgra
         _grantRole(UPGRADER_ROLE, upgrader);
 
         s_defaultAdmin = defaultAdmin;
+        s_studentPathProxy = ERC1967Proxy(payable(studentPath));
+        s_courseCompletedRequiredForCertificate = 1;
 
         emit DefaultRolesAssigned();
     }
 
     function createCertificate(address from, uint256 id, bytes memory data) public onlyRole(ADMIN) returns (uint256) {
+        if (
+            StudentPath(payable(s_studentPathProxy)).getCoursesCompleted(from)
+                != s_courseCompletedRequiredForCertificate
+        ) {
+            revert CertificateNFT_StudentHasNotCompletedHisPath();
+        }
         _mint(from, id, 1, data);
         s_certificatesIds.add(id);
         s_certificatesOwners.add(from);
@@ -84,7 +98,7 @@ contract CertificateNFT is Initializable, ERC1155Upgradeable, AccessControlUpgra
     }
 
     /**
-     * Getters
+     * Get
      */
     function getCertificateIds() public view returns (uint256[] memory) {
         return s_certificatesIds.values();
@@ -97,6 +111,13 @@ contract CertificateNFT is Initializable, ERC1155Upgradeable, AccessControlUpgra
     function getCertificatesAmountPerUser(address user) public view returns (uint256) {
         return s_certificatesOwned[user];
     }
+
+    /**
+     * Set
+     */
+    function setCourseCompletedRequiredForCertificate(uint256 newValue) public onlyRole(ADMIN) {
+        s_courseCompletedRequiredForCertificate = newValue;
+    }
     /**
      * Overrides
      */
@@ -108,7 +129,7 @@ contract CertificateNFT is Initializable, ERC1155Upgradeable, AccessControlUpgra
     {
         super.safeTransferFrom(from, to, id, value, data);
     }
-    
+
     // OPENSEA
 
     function uri(uint256 _tokenid) public view override returns (string memory) {

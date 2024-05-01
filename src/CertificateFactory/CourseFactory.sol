@@ -62,8 +62,6 @@ contract CourseFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
         //1. places
         uint256 placesTotal;
         uint256 placesAvailable;
-        //2. test
-        string[] testsUris;
         //3. certification
         string certificationUri;
         //4. sections -- not consider for now
@@ -75,7 +73,6 @@ contract CourseFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
     }
 
     constructor(address vrfCoordinator) VRFConsumerBaseV2(vrfCoordinator) {
-        //to check
         _disableInitializers();
     }
 
@@ -117,7 +114,6 @@ contract CourseFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
     function createCourse(
         string memory uri,
         uint256 _placesTotal,
-        string[] memory _testsUris,
         string memory _certificationUri,
         string[] memory _lessonsUris,
         string[] memory _quizUris
@@ -137,21 +133,21 @@ contract CourseFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
             uri,
             _placesTotal,
             _placesTotal,
-            _testsUris,
             _certificationUri,
             emptyArray,
             _lessonsUris,
             _quizUris
         );
 
-        uint256 requestId = s_vrfCoordinator.requestRandomWords(
+        uint256 reqId = s_vrfCoordinator.requestRandomWords(
             s_gasLane, s_subscriptionId, REQUEST_CONFIRMATIONS, s_callbackgaslimit, NUM_WORDS
         );
 
-        emit CourseFactory_CertificateCreatedAndRequestSent(requestId);
+        emit CourseFactory_CertificateCreatedAndRequestSent(reqId);
 
-        return (s_createdCourse, requestId);
+        return (s_createdCourse, reqId);
     }
+    
     /**
      * VRF Callback
      * - receiving random words
@@ -178,7 +174,7 @@ contract CourseFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
         //reset fields
         string[] memory emptyArrayStr = new string[](0);
         s_createdCourse =
-            CourseStruct(address(0), false, "", 0, 0, emptyArrayStr, "", emptyArrayStr, emptyArrayStr, emptyArrayStr);
+            CourseStruct(address(0), false, "", 0, 0, "", emptyArrayStr, emptyArrayStr, emptyArrayStr);
 
         s_currentRequestState = State.OPEN;
     }
@@ -219,6 +215,10 @@ contract CourseFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
 
     function getLastRandomNumber() public view returns (uint256) {
         return s_lastRandomNumber;
+    }
+
+    function getAllLessonIds(uint256 courseId) public view returns (string[] memory) {
+        return s_idToCourse[courseId].lessonsIds;
     }
 
     function isAdmin(address user) public view returns (bool) {
