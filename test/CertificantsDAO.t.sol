@@ -9,6 +9,7 @@ import {TimeLock} from "../src/DAO/TimeLock.sol";
 import {CertificateNFT} from "../src/CertificateFactory/CertificateNFT.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {StudentPath} from "../src/CertificateFactory/StudentPath.sol";
+import {CreateCourse} from "../script/Interactions.sol";
 
 contract CertificantsDAOTest is Test {
     TimeLock timelock;
@@ -17,6 +18,7 @@ contract CertificantsDAOTest is Test {
     MakeStuff makeStuff;
     CertificateNFT certificateNFT;
     StudentPath studentPath;
+    CreateCourse createCourse;
     ERC1967Proxy proxy;
     address ALICE_ADDRESS_ANVIL = makeAddr("ALICE_ADDRESS_ANVIL");
     uint256 constant MIN_DELAY = 3600; //after a vote passes /no pass until this goes by
@@ -34,6 +36,7 @@ contract CertificantsDAOTest is Test {
 
         timelock = new TimeLock(MIN_DELAY, proposers, executors);
         certificateNFT = new CertificateNFT();
+        createCourse = new CreateCourse();
         studentPath = new StudentPath();
         bytes memory initializerData = abi.encodeWithSelector(
             CertificateNFT.initialize.selector, ALICE_ADDRESS_ANVIL, ALICE_ADDRESS_ANVIL, address(studentPath)

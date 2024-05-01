@@ -1,9 +1,11 @@
 ## Certificate Generator and DAO v0.2
 
-This is a project that simulates a real world certificate generation Institution.
-The students can add courses to their own Student Path.
-The certificate is granted for the student when a certain number of courses are completed 
-(aka all lessons are finished). The certificate is minted and tranferred in the form of ERC1155.
+This is a project that simulates a real world Certificate Generation Institution.
+Each student can add 1 or more courses to their own Student Path.
+A Certificate is granted for the student only when a certain number of courses are completed 
+and all lessons are finished. The Certificate is minted and transferred in the form of ERC1155.
+
+A DAO where their members must have at least 1 certificate is created. More certificates a member has earned, more power in the DAO will possess.
 
 ## Contracts
 # CourseFactory
@@ -11,6 +13,9 @@ The CourseFactory contract permits to create courses that have a verified true r
 # StudentPath
 Each student can have its own path, where all courses and lessons data are stored.
 # CertificateNFT
+
+# CreateCourse
+
 
 1. 
 2. Each student has his own Path
@@ -25,8 +30,4 @@ Each student can have its own path, where all courses and lessons data are store
 <img src="img/student_path.png" alt="StudentPath" width="600"/>
 
 
-
-
-## Tools
-- Openzeppeli   n: ERC1967Proxy, AccessControl
-- Chainlink: VRF
+## Keywords
