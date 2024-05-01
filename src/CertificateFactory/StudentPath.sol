@@ -49,9 +49,10 @@ contract StudentPath is Initializable, AccessControlUpgradeable, UUPSUpgradeable
     error StudentPath_CoursePathNotInitialized();
     error StudentPath_OnlyOneLessonCanBeOnHold();
     error StudentPath_StateOrderNotCongruentWithStateFlow(State currentState, State newState);
+    error StudentPath_NoMorePlacesAvailableForThisCourse(uint256 courseId);
 
     modifier checkState(State currentState, State newState) {
-        if (currentState >= newState) {
+        if (uint8(currentState) >= uint8(newState)) {
             revert StudentPath_StateOrderNotCongruentWithStateFlow(currentState, newState);
         }
         _;
@@ -79,6 +80,9 @@ contract StudentPath is Initializable, AccessControlUpgradeable, UUPSUpgradeable
     }
 
     function addCourseAndLessonsToPath(uint256 courseId, address student) public onlyRole(ADMIN) {
+        if (CourseFactory(payable(s_courseFactoryProxy)).getAvailablePlaces(courseId) == 0) {
+            revert StudentPath_NoMorePlacesAvailableForThisCourse(courseId);
+        }
         string[] memory courseLessons = CourseFactory(payable(s_courseFactoryProxy)).getAllLessonIds(courseId);
         uint256 allLessonsAmount = courseLessons.length;
         s_studentCoursesPath[student][courseId].courseState = State.SUBSCRIBED;
@@ -89,6 +93,7 @@ contract StudentPath is Initializable, AccessControlUpgradeable, UUPSUpgradeable
         for (uint256 i = 0; i < allLessonsAmount; i++) {
             s_studentLessonsPath[student][courseLessons[i]] = State.SUBSCRIBED;
         }
+        CourseFactory(payable(s_courseFactoryProxy)).decrementAvailablePlaces(courseId);
     }
 
     /**

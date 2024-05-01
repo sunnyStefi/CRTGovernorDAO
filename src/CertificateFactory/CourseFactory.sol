@@ -34,12 +34,12 @@ contract CourseFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
         //1. places
         uint256 placesTotal;
         uint256 placesAvailable;
-        //3. certification
+        //2. certification
         string certificationUri;
-        //4. sections -- not consider for now
-        //4.1 lessons
-        //4.1.1 quiz
-        string[] lessonsIds;
+        //3. section
+        //3.1 lessons
+        //3.1.1 quiz
+        string[] lessonsIds;  //"XYZ.._0, XYZ.._1, .."
         string[] lessonsUris;
         string[] quizUris;
     }
@@ -219,6 +219,10 @@ contract CourseFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
         return s_idToCourse[courseId].lessonsIds;
     }
 
+    function getAvailablePlaces(uint256 courseId) public view returns (uint256) {
+        return s_idToCourse[courseId].placesAvailable;
+    }
+
     function isAdmin(address user) public view returns (bool) {
         return hasRole(ADMIN, user);
     }
@@ -226,10 +230,14 @@ contract CourseFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
     /**
      * Setters
      */
+
+    function decrementAvailablePlaces(uint256 courseId) public view returns (uint256) { //todo onlyRole(ADMIN)
+        return s_idToCourse[courseId].placesAvailable -1;
+    }
     function closeCourse() public {}
 
     function openCourse() public {}
+    
     // PROXY
-
     function _authorizeUpgrade(address newImplementation) internal override onlyRole(UPGRADER_ROLE) {}
 }
