@@ -151,7 +151,9 @@ contract StudentPath is Initializable, AccessControlUpgradeable, UUPSUpgradeable
             s_courseCompleted[student] += 1;
         } else {
             s_studentCoursesPath[student][courseId].courseState = State.SUBSCRIBED;
-            s_courseCompleted[student] -= 1;
+            if (s_courseCompleted[student] != 0) {
+                s_courseCompleted[student] -= 1;
+            }
         }
     }
 
@@ -159,7 +161,7 @@ contract StudentPath is Initializable, AccessControlUpgradeable, UUPSUpgradeable
         if (s_studentCoursesPath[student][courseId].courseState == State.EMPTY) {
             revert StudentPath_CoursePathNotInitialized();
         }
-        
+
         //Lessons
         string[] memory courseLessons = CourseFactory(payable(s_courseFactoryProxy)).getAllLessonIds(courseId);
         uint256 allLessonsAmount = courseLessons.length;
@@ -168,12 +170,14 @@ contract StudentPath is Initializable, AccessControlUpgradeable, UUPSUpgradeable
         }
         //Courses
         s_studentCoursesPath[student][courseId].courseState = state;
-        if (state == State.EMPTY || state == State.SUBSCRIBED) { //check previous state
+        if (state == State.EMPTY || state == State.SUBSCRIBED) {
+            //check previous state
             s_studentCoursesPath[student][courseId].lessonsCompleted = 0;
             s_studentCoursesPath[student][courseId].lessonsSubscribed = allLessonsAmount;
             s_courseCompleted[student] -= 1;
         }
-        if (state == State.COMPLETED) { //check previous state
+        if (state == State.COMPLETED) {
+            //check previous state
             s_studentCoursesPath[student][courseId].lessonsCompleted = allLessonsAmount;
             s_studentCoursesPath[student][courseId].lessonsSubscribed = allLessonsAmount;
             s_courseCompleted[student] += 1;
