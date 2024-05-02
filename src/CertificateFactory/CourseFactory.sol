@@ -230,8 +230,8 @@ contract CourseFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
     /**
      * Setters
      */
-
-    function decrementAvailablePlaces(uint256 courseId) public view returns (uint256) { //todo onlyRole(ADMIN)
+    //todo check why role is not granted to ALICE - add onlyRole(ADMIN): 
+    function decrementAvailablePlaces(uint256 courseId) external returns (uint256) { 
         return s_idToCourse[courseId].placesAvailable -1;
     }
     function closeCourse() public {}
@@ -240,4 +240,5 @@ contract CourseFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
     
     // PROXY
     function _authorizeUpgrade(address newImplementation) internal override onlyRole(UPGRADER_ROLE) {}
+
 }

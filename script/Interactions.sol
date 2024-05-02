@@ -3,7 +3,6 @@
 pragma solidity ^0.8.19;
 
 import {Script, console} from "forge-std/Script.sol";
-import {Test, console} from "forge-std/Test.sol";
 import {CourseFactory} from "../src/CertificateFactory/CourseFactory.sol";
 import {StudentPath} from "../src/CertificateFactory/StudentPath.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
@@ -12,17 +11,18 @@ import {Vm} from "forge-std/Vm.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
 contract CreateCourse is Script {
+    uint96 baseFee = 0.25 ether;
+    uint32 callbackgaslimit = type(uint32).max;
+    uint96 gasPriceLink = 1e9; //1gwei LINK
+    uint256 placesTotal = 10;
+    bytes32 public constant ADMIN = keccak256("ADMIN");
     address ALICE_ADDRESS_ANVIL = makeAddr("ALICE_ADDRESS_ANVIL");
     string TEST_URI = "ipfs://123";
     string[] TEST_URI_ARRAY = [TEST_URI];
     string[] TEST_LESSON_URI_ARRAY = [TEST_URI, TEST_URI, TEST_URI]; //3 lessons
     CourseFactory courseFactory;
-    uint256 placesTotal = 10;
     ERC1967Proxy proxy;
     VRFCoordinatorV2Mock vrfCoordinatorV2Mock;
-    uint96 baseFee = 0.25 ether;
-    uint32 callbackgaslimit = type(uint32).max;
-    uint96 gasPriceLink = 1e9; //1gwei LINK
     CourseFactory.CourseStruct createdCourse;
 
     function run() external returns (address, uint256) {
@@ -48,6 +48,7 @@ contract CreateCourse is Script {
         );
         vm.recordLogs();
         vrfCoordinatorV2Mock.fulfillRandomWords(uint256(requestIdResult), address(proxy));
+        console.log(courseFactory.hasRole(ADMIN, ALICE_ADDRESS_ANVIL)); // is false TODO!
         Vm.Log[] memory entries = vm.getRecordedLogs();
         return (address(proxy), uint256(entries[0].topics[1]));
     }
