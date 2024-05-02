@@ -30,10 +30,9 @@ A raw memory repetition pattern process has been implemented to let student reta
 4. Monthly review/quizzes (within 1 month)
 
 Only by respecting these appointments and successfully executing quizzers he will be able to earn his Certificate. No other exams or tests are needed. 
-
 The StatusUpgrade function is punctually called obtained trough Chainlink Automation. (TODO)
 
-Each lesson can then going through the following states (Lesson State Flow): EMPTY, SUBSCRIBED, SHORT_TERM_QUIZ_PASSED, DAILY_TERM_QUIZ_PASSED, WEEKLY_TERM_QUIZ_PASSED, COMPLETED
+Each lesson cmust follow one of the following states, (Lesson State Flow): EMPTY, SUBSCRIBED, SHORT_TERM_QUIZ_PASSED, DAILY_TERM_QUIZ_PASSED, WEEKLY_TERM_QUIZ_PASSED, COMPLETED
 
 ### 3. CertificateNFT
 
